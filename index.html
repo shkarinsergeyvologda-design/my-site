@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Калькулятор стоимости лазерной резки + КП</title>
+<style>
+  :root{
+    --bg:#f1f5f9;
+    --card:#ffffff;
+    --line:#e2e8f0;
+    --text:#0f172a;
+    --muted:#64748b;
+    --accent:#2563eb;
+    --accent-dark:#1d4ed8;
+    --input-bg:#fffbeb;
+    --input-border:#fbbf24;
+    --green:#059669;
+    --green-dark:#047857;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    padding:24px 16px 64px;
+    font-family:"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:15px;
+    line-height:1.45;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  header.page{margin-bottom:20px;}
+  header.page h1{font-size:26px;margin:0 0 6px;letter-spacing:-.3px;}
+  header.page p{margin:0;color:var(--muted);font-size:14px;}
+
+  .layout{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 360px;
+    gap:20px;
+    align-items:start;
+  }
+  @media (max-width:980px){.layout{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px 20px 20px;
+    box-shadow:0 1px 2px rgba(15,23,42,.04);
+    margin-bottom:18px;
+  }
+  .card h2{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:16px;
+    margin:0 0 14px;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--line);
+  }
+  .card h2 .num{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;height:24px;
+    border-radius:8px;
+    background:var(--accent);
+    color:#fff;
+    font-size:13px;
+    font-weight:700;
+    flex:none;
+  }
+
+  /* Кнопка блокировки в заголовке секции */
+  .lock-toggle{
+    margin-left:auto;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:5px 10px;
+    font-family:inherit;
+    font-size:12.5px;
+    font-weight:600;
+    color:#92400e;
+    background:#fef3c7;
+    border:1px solid #fde68a;
+    border-radius:8px;
+    cursor:pointer;
+    transition:all .15s;
+    white-space:nowrap;
+  }
+  .lock-toggle:hover{background:#fde68a;border-color:#fcd34d;}
+  .lock-toggle.unlocked{
+    color:#065f46;
+    background:#ecfdf5;
+    border-color:#a7f3d0;
+  }
+  .lock-toggle.unlocked:hover{background:#d1fae5;border-color:#6ee7b7;}
+
+  .fields{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:14px;
+  }
+  .field label{
+    display:block;
+    font-size:13px;
+    font-weight:600;
+    color:#334155;
+    margin-bottom:5px;
+  }
+  .field .hint{
+    display:block;
+    font-size:11.5px;
+    font-weight:400;
+    color:var(--muted);
+    margin-top:4px;
+  }
+  .input-wrap{
+    display:flex;
+    align-items:stretch;
+    border:1px solid var(--input-border);
+    background:var(--input-bg);
+    border-radius:9px;
+    overflow:hidden;
+    transition:box-shadow .15s, border-color .15s;
+  }
+  .input-wrap:focus-within{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(37,99,235,.15);
+  }
+  .input-wrap input{
+    flex:1;
+    min-width:0;
+    border:0;
+    outline:0;
+    background:transparent;
+    padding:9px 10px;
+    font-size:15px;
+    font-family:inherit;
+    color:var(--text);
+    font-weight:600;
+  }
+  .input-wrap input[type=text],
+  .input-wrap input[type=tel],
+  .input-wrap input[type=email]{font-weight:500;}
+  .input-wrap .unit{
+    display:flex;
+    align-items:center;
+    padding:0 10px;
+    font-size:12px;
+    color:var(--muted);
+    background:rgba(255,255,255,.6);
+    border-left:1px solid rgba(251,191,36,.5);
+    white-space:nowrap;
+  }
+
+  /* Заблокированное поле */
+  .input-wrap.locked{
+    border-color:var(--line);
+    background:#f1f5f9;
+  }
+  .input-wrap.locked input{
+    color:#64748b;
+    cursor:not-allowed;
+    font-weight:600;
+  }
+  .input-wrap.locked .unit{
+    background:rgba(255,255,255,.4);
+    border-left-color:rgba(203,213,225,.7);
+  }
+  .input-wrap.locked:focus-within{
+    border-color:var(--line);
+    box-shadow:none;
+  }
+
+  /* Select внутри input-wrap */
+  .input-wrap select{
+    flex:1;
+    min-width:0;
+    border:0;
+    outline:0;
+    background:transparent;
+    padding:9px 28px 9px 10px;
+    font-size:15px;
+    font-family:inherit;
+    color:var(--text);
+    font-weight:500;
+    cursor:pointer;
+    appearance:none;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+    background-repeat:no-repeat;
+    background-position:right 10px center;
+    background-size:12px;
+  }
+  .input-wrap select option{color:var(--text);}
+
+  /* Readonly-поле (плотность) */
+  .input-wrap.readonly{
+    border-color:var(--line);
+    background:#f1f5f9;
+  }
+  .input-wrap.readonly input{
+    color:#475569;
+    cursor:not-allowed;
+    font-weight:600;
+  }
+  .input-wrap.readonly .unit{
+    background:rgba(255,255,255,.5);
+    border-left-color:rgba(203,213,225,.7);
+  }
+
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  input[type=number]{-moz-appearance:textfield;}
+
+  .calc{
+    margin-top:16px;
+    border-top:1px dashed var(--line);
+    padding-top:12px;
+    display:grid;
+    gap:8px;
+  }
+  .calc-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:12px;
+    font-size:14px;
+  }
+  .calc-row span{color:var(--muted);}
+  .calc-row b{
+    font-weight:700;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+  }
+  .calc-row.accent b{color:var(--accent-dark);}
+
+  /* Итоговая панель */
+  .summary{position:sticky;top:20px;}
+  .summary .card{padding:20px;}
+  .summary h2{border-bottom:0;padding-bottom:0;margin-bottom:16px;}
+  .sum-line{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+    padding:7px 0;
+    font-size:14px;
+    border-bottom:1px dashed var(--line);
+  }
+  .sum-line:last-of-type{border-bottom:0;}
+  .sum-line span{color:var(--muted);}
+  .sum-line b{font-variant-numeric:tabular-nums;white-space:nowrap;}
+
+  .total-box{
+    margin-top:14px;
+    background:linear-gradient(135deg,#eff6ff,#e0f2fe);
+    border:1px solid #bfdbfe;
+    border-radius:12px;
+    padding:14px 16px;
+  }
+  .total-box .label{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+    color:#1e40af;
+    font-weight:700;
+  }
+  .total-box .value{
+    font-size:26px;
+    font-weight:800;
+    color:var(--accent-dark);
+    font-variant-numeric:tabular-nums;
+    line-height:1.2;
+    margin-top:2px;
+    letter-spacing:-.5px;
+  }
+  .total-box.per-part{
+    background:linear-gradient(135deg,#ecfdf5,#d1fae5);
+    border-color:#a7f3d0;
+  }
+  .total-box.per-part .label{color:#065f46;}
+  .total-box.per-part .value{color:var(--green-dark);}
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    width:100%;
+    margin-top:16px;
+    padding:11px 16px;
+    font:inherit;
+    font-weight:600;
+    color:#fff;
+    background:var(--accent);
+    border:0;
+    border-radius:10px;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  .btn:hover{background:var(--accent-dark);}
+  .btn.ghost{
+    background:#fff;
+    color:#334155;
+    border:1px solid var(--line);
+    margin-top:10px;
+  }
+  .btn.ghost:hover{background:#f8fafc;}
+
+  .note{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:12px;
+    line-height:1.5;
+  }
+
+  /* Стили для КП */
+  #kp-content {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px;
+    font-size: 14px;
+  }
+  #kp-content table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #kp-content th, #kp-content td {
+    border: 1px solid #cbd5e1;
+  }
+
+  /* Модальное окно пароля */
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(15,23,42,.55);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+    padding:16px;
+  }
+  .modal-overlay.active{display:flex;}
+  .modal{
+    background:#fff;
+    border-radius:14px;
+    padding:24px;
+    max-width:420px;
+    width:100%;
+    box-shadow:0 20px 40px rgba(15,23,42,.25);
+  }
+  .modal.shake{animation:shake .35s;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-7px);}
+    75%{transform:translateX(7px);}
+  }
+  .modal-title{
+    font-size:17px;
+    font-weight:700;
+    margin-bottom:10px;
+    color:#1e293b;
+  }
+  .modal-text{
+    font-size:14px;
+    color:#64748b;
+    margin-bottom:14px;
+    line-height:1.45;
+  }
+  .modal-input{
+    width:100%;
+    padding:11px 12px;
+    font-size:20px;
+    letter-spacing:6px;
+    text-align:center;
+    font-family:inherit;
+    border:1px solid #cbd5e1;
+    border-radius:9px;
+    outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .modal-input:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(37,99,235,.15);
+  }
+  .modal-error{
+    color:#dc2626;
+    font-size:13px;
+    margin-top:8px;
+    min-height:18px;
+    font-weight:600;
+  }
+  .modal-actions{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+  }
+  .modal-actions .btn{
+    flex:1;
+    margin:0;
+    width:auto;
+  }
+
+  /* Печать только КП */
+  @media print {
+    body * { visibility: hidden; }
+    #kp-section, #kp-section * { visibility: visible; }
+    #kp-section {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      border: none;
+      box-shadow: none;
+    }
+    #kp-section .btn { display: none; }
+    #kp-section .kp-inputs { display: none; }
+    #kp-content {
+      border: none !important;
+      padding: 0 !important;
+      background: #fff !important;
+    }
+    .layout, header.page, .summary, .modal-overlay { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <h1>Калькулятор стоимости лазерной резки</h1>
+    <p>Жёлтые поля — данные для заполнения. Остальное считается автоматически.</p>
+  </header>
+
+  <div class="layout">
+
+    <!-- ЛЕВАЯ КОЛОНКА: ВВОД -->
+    <main>
+
+      <!-- 1. Материал -->
+      <section class="card">
+        <h2><span class="num">1</span> Материал</h2>
+        <div class="fields">
+
+          <div class="field">
+            <label for="material">Материал</label>
+            <div class="input-wrap">
+              <select id="material">
+                <option value="Черная сталь" data-density="7850" selected>Черная сталь</option>
+                <option value="Нержавеющая сталь" data-density="7900">Нержавеющая сталь</option>
+                <option value="Алюминий" data-density="2700">Алюминий</option>
+                <option value="Медь" data-density="8930">Медь</option>
+              </select>
+            </div>
+            <span class="hint">Выберите материал из списка</span>
+          </div>
+
+          <div class="field">
+            <label for="priceKg">Цена материала за 1 кг</label>
+            <div class="input-wrap">
+              <input id="priceKg" type="number" value="70" step="any" min="0">
+              <span class="unit">руб/кг</span>
+            </div>
+            <span class="hint">Цена закупки листового металла</span>
+          </div>
+
+          <div class="field">
+            <label for="thickness">Толщина листа</label>
+            <div class="input-wrap">
+              <input id="thickness" type="number" value="4" step="any" min="0">
+              <span class="unit">мм</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="density">Плотность материала (авто)</label>
+            <div class="input-wrap readonly">
+              <input id="density" type="number" value="7850" step="any" min="0" readonly>
+              <span class="unit">кг/м³</span>
+            </div>
+            <span class="hint">Рассчитывается по выбранному материалу</span>
+          </div>
+
+          <div class="field">
+            <label for="area">Площадь одной детали</label>
+            <div class="input-wrap">
+              <input id="area" type="number" value="0.05" step="any" min="0">
+              <span class="unit">м²</span>
+            </div>
+            <span class="hint">Площадь заготовки с учётом отхода при раскрое</span>
+          </div>
+
+          <div class="field">
+            <label for="qty">Количество деталей</label>
+            <div class="input-wrap">
+              <input id="qty" type="number" value="60" step="1" min="1">
+              <span class="unit">шт</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="calc">
+          <div class="calc-row">
+            <span>Масса одной детали (расчёт)</span>
+            <b id="outMass">—</b>
+          </div>
+          <div class="calc-row accent">
+            <span>Стоимость материала на 1 деталь</span>
+            <b id="outMatPerPart">—</b>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Параметры реза -->
+      <section class="card">
+        <h2>
+          <span class="num">2</span> Параметры реза
+          <button class="lock-toggle" type="button" data-role="lockBtn">🔒 Пароль</button>
+        </h2>
+        <div class="fields">
+
+          <div class="field">
+            <label for="cutLength">Длина реза на 1 деталь</label>
+            <div class="input-wrap">
+              <input id="cutLength" type="number" value="4640" step="any" min="0">
+              <span class="unit">мм</span>
+            </div>
+            <span class="hint">Суммарная длина контуров + отверстий</span>
+          </div>
+
+          <div class="field">
+            <label for="speed">Скорость резки</label>
+            <div class="input-wrap">
+              <input id="speed" type="number" value="1500" step="any" min="1">
+              <span class="unit">мм/мин</span>
+            </div>
+            <span class="hint">Зависит от мощности лазера и толщины металла</span>
+          </div>
+
+          <div class="field">
+            <label for="pierceTime">Время на 1 прошивку (врезание)</label>
+            <div class="input-wrap">
+              <input id="pierceTime" type="number" value="0.8" step="any" min="0">
+              <span class="unit">сек</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="pierceCount">Кол-во прошивок на 1 деталь</label>
+            <div class="input-wrap">
+              <input id="pierceCount" type="number" value="60" step="1" min="0">
+              <span class="unit">шт</span>
+            </div>
+            <span class="hint">Число отдельных контуров / отверстий</span>
+          </div>
+
+          <div class="field">
+            <label for="setupTime">Время на наладку / загрузку листа</label>
+            <div class="input-wrap">
+              <input id="setupTime" type="number" value="5" step="any" min="0">
+              <span class="unit">мин</span>
+            </div>
+            <span class="hint">Разовое время на весь заказ (не на деталь)</span>
+          </div>
+
+        </div>
+
+        <div class="calc">
+          <div class="calc-row accent">
+            <span>Время резки 1 детали (расчёт)</span>
+            <b id="outCutTime">—</b>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Стоимость станко-часа -->
+      <section class="card">
+        <h2>
+          <span class="num">3</span> Стоимость станко-часа
+          <button class="lock-toggle" type="button" data-role="lockBtn">🔒 Пароль</button>
+        </h2>
+        <div class="fields">
+
+          <div class="field">
+            <label for="machineHour">Стоимость машино-часа</label>
+            <div class="input-wrap">
+              <input id="machineHour" type="number" value="1800" step="any" min="0">
+              <span class="unit">руб/час</span>
+            </div>
+            <span class="hint">Амортизация, ремонт, электроэнергия, обслуживание</span>
+          </div>
+
+          <div class="field">
+            <label for="gasHour">Расход газа (кислород / азот) в час</label>
+            <div class="input-wrap">
+              <input id="gasHour" type="number" value="350" step="any" min="0">
+              <span class="unit">руб/час</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="salaryHour">Зарплата оператора в час</label>
+            <div class="input-wrap">
+              <input id="salaryHour" type="number" value="500" step="any" min="0">
+              <span class="unit">руб/час</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="calc">
+          <div class="calc-row accent">
+            <span>Итого стоимость часа работы</span>
+            <b id="outHourTotal">—</b>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Себестоимость -->
+      <section class="card">
+        <h2><span class="num">4</span> Себестоимость детали и партии</h2>
+        <div class="calc" style="margin-top:0;border-top:0;padding-top:0;">
+          <div class="calc-row">
+            <span>Стоимость резки 1 детали</span>
+            <b id="outCutCost">—</b>
+          </div>
+          <div class="calc-row">
+            <span>Себестоимость 1 детали (материал + резка)</span>
+            <b id="outPartCost">—</b>
+          </div>
+          <div class="calc-row">
+            <span>Стоимость наладки (на партию)</span>
+            <b id="outSetupCost">—</b>
+          </div>
+          <div class="calc-row accent">
+            <span>Себестоимость всей партии</span>
+            <b id="outBatchCost">—</b>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. Наценка и НДС -->
+      <section class="card">
+        <h2><span class="num">5</span> Наценка, НДС и итоговая цена</h2>
+        <div class="fields">
+
+          <div class="field">
+            <label for="markup">Наценка (прибыль)</label>
+            <div class="input-wrap">
+              <input id="markup" type="number" value="50" step="any" min="0">
+              <span class="unit">%</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="vat">НДС</label>
+            <div class="input-wrap">
+              <input id="vat" type="number" value="22" step="any" min="0">
+              <span class="unit">%</span>
+            </div>
+            <span class="hint">Укажите 0, если работаете без НДС</span>
+          </div>
+
+        </div>
+
+        <div class="calc">
+          <div class="calc-row">
+            <span>Цена партии с наценкой (без НДС)</span>
+            <b id="outPriceNoVat">—</b>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ПРАВАЯ КОЛОНКА: ИТОГИ -->
+    <aside class="summary">
+      <div class="card">
+        <h2>Итог расчёта</h2>
+
+        <div class="sum-line">
+          <span>Материал на 1 деталь</span>
+          <b id="sumMat">—</b>
+        </div>
+        <div class="sum-line">
+          <span>Резка 1 детали</span>
+          <b id="sumCut">—</b>
+        </div>
+        <div class="sum-line">
+          <span>Себестоимость 1 детали</span>
+          <b id="sumPart">—</b>
+        </div>
+        <div class="sum-line">
+          <span>Себестоимость партии</span>
+          <b id="sumBatch">—</b>
+        </div>
+
+        <div class="total-box">
+          <div class="label">Цена партии с наценкой (без НДС)</div>
+          <div class="value" id="sumNoVat">—</div>
+        </div>
+
+        <div class="total-box">
+          <div class="label">Итоговая цена партии (с НДС)</div>
+          <div class="value" id="sumTotal">—</div>
+        </div>
+
+        <div class="total-box per-part">
+          <div class="label">Цена за 1 деталь (с НДС)</div>
+          <div class="value" id="sumPerPart">—</div>
+        </div>
+
+        <button class="btn ghost" type="button" id="resetBtn">Сбросить к значениям по умолчанию</button>
+
+        <p class="note">
+          Параметры реза и стоимость станко-часа защищены паролем.
+          Остальные поля можно менять свободно.
+        </p>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ -->
+  <section class="card" id="kp-section">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+      <h2 style="margin:0; border:0; padding:0;"><span class="num">📄</span> Коммерческое предложение</h2>
+      <button class="btn" type="button" onclick="window.print()" style="width:auto; margin:0;">🖨 Печать КП</button>
+    </div>
+
+    <!-- Контактные данные для КП -->
+    <div class="kp-inputs" style="margin-bottom:18px;">
+      <div class="fields">
+        <div class="field">
+          <label for="phone">Телефон для КП</label>
+          <div class="input-wrap">
+            <input id="phone" type="tel" placeholder="+7 (___) ___-__-__">
+            <span class="unit">тел</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="email">E-mail для КП</label>
+          <div class="input-wrap">
+            <input id="email" type="email" placeholder="info@example.ru">
+            <span class="unit">@</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="kp-content">
+      <!-- Динамическое содержимое КП -->
+    </div>
+  </section>
+
+</div>
+
+<!-- Модальное окно для ввода пароля -->
+<div class="modal-overlay" id="pwdModal">
+  <div class="modal" id="pwdModalBox">
+    <div class="modal-title">🔒 Доступ по паролю</div>
+    <div class="modal-text">
+      Введите пароль для редактирования параметров реза и стоимости станко-часа.
+    </div>
+    <input type="password" id="pwdInput" class="modal-input" placeholder="••••" autocomplete="off" inputmode="numeric">
+    <div class="modal-error" id="pwdError"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" type="button" id="pwdCancel">Отмена</button>
+      <button class="btn" type="button" id="pwdOk">Разблокировать</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ==================== КОНСТАНТЫ ==================== */
+  var LOCK_PASSWORD = "0000";
+
+  var LOCKED_KEYS = [
+    "cutLength", "speed", "pierceTime", "pierceCount", "setupTime",
+    "machineHour", "gasHour", "salaryHour"
+  ];
+
+  var DEFAULTS = {
+    material: "Черная сталь",
+    priceKg: 70,
+    thickness: 4,
+    area: 0.05,
+    qty: 60,
+    cutLength: 4640,
+    speed: 1500,
+    pierceTime: 0.8,
+    pierceCount: 60,
+    setupTime: 5,
+    machineHour: 1800,
+    gasHour: 350,
+    salaryHour: 500,
+    markup: 50,
+    vat: 22,
+    phone: "",
+    email: ""
+  };
+
+  var isLocked = true;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function val(id) {
+    var v = parseFloat($(id).value);
+    return isFinite(v) ? v : 0;
+  }
+
+  function fmt(v, digits) {
+    if (!isFinite(v)) v = 0;
+    digits = (digits === undefined) ? 2 : digits;
+    return v.toLocaleString("ru-RU", {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    });
+  }
+
+  function money(v, digits) {
+    return fmt(v, digits === undefined ? 2 : digits) + " ₽";
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function(m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+  }
+
+  /* ==================== БЛОКИРОВКА ==================== */
+
+  function applyLockState() {
+    /* Все защищённые поля -> readOnly + стиль */
+    for (var i = 0; i < LOCKED_KEYS.length; i++) {
+      var id = LOCKED_KEYS[i];
+      var el = $(id);
+      if (!el) continue;
+      el.readOnly = isLocked;
+      var wrap = el.closest(".input-wrap");
+      if (wrap) wrap.classList.toggle("locked", isLocked);
+    }
+
+    /* Все кнопки блокировки в заголовках -> обновить вид */
+    var btns = document.querySelectorAll('[data-role="lockBtn"]');
+    for (var j = 0; j < btns.length; j++) {
+      var btn = btns[j];
+      if (isLocked) {
+        btn.classList.remove("unlocked");
+        btn.innerHTML = "🔒 Пароль";
+        btn.title = "Редактирование только по паролю";
+      } else {
+        btn.classList.add("unlocked");
+        btn.innerHTML = "🔓 Открыто";
+        btn.title = "Нажмите, чтобы заблокировать";
+      }
+    }
+  }
+
+  function openPasswordModal() {
+    $("pwdInput").value = "";
+    $("pwdError").textContent = "";
+    $("pwdModalBox").classList.remove("shake");
+    $("pwdModal").classList.add("active");
+    setTimeout(function () { $("pwdInput").focus(); }, 60);
+  }
+
+  function closePasswordModal() {
+    $("pwdModal").classList.remove("active");
+  }
+
+  function tryUnlock() {
+    if ($("pwdInput").value === LOCK_PASSWORD) {
+      isLocked = false;
+      closePasswordModal();
+      applyLockState();
+    } else {
+      $("pwdError").textContent = "Неверный пароль";
+      $("pwdModalBox").classList.remove("shake");
+      /* перезапуск анимации */
+      void $("pwdModalBox").offsetWidth;
+      $("pwdModalBox").classList.add("shake");
+      $("pwdInput").value = "";
+      $("pwdInput").focus();
+    }
+  }
+
+  function toggleLock() {
+    if (isLocked) {
+      openPasswordModal();
+    } else {
+      isLocked = true;
+      applyLockState();
+    }
+  }
+
+  /* Навешиваем обработчики на кнопки блокировки */
+  var lockBtns = document.querySelectorAll('[data-role="lockBtn"]');
+  for (var k = 0; k < lockBtns.length; k++) {
+    lockBtns[k].addEventListener("click", toggleLock);
+  }
+
+  /* Модальное окно */
+  $("pwdOk").addEventListener("click", tryUnlock);
+  $("pwdCancel").addEventListener("click", closePasswordModal);
+
+  $("pwdInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); tryUnlock(); }
+    if (e.key === "Escape") { e.preventDefault(); closePasswordModal(); }
+  });
+
+  $("pwdModal").addEventListener("click", function (e) {
+    if (e.target === $("pwdModal")) closePasswordModal();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && $("pwdModal").classList.contains("active")) {
+      closePasswordModal();
+    }
+  });
+
+  /* ==================== РАСЧЁТ ==================== */
+
+  function updateDensity() {
+    var sel = $("material");
+    var opt = sel.options[sel.selectedIndex];
+    var d = opt ? opt.getAttribute("data-density") : "7850";
+    $("density").value = d;
+  }
+
+  function calculate() {
+    var priceKg      = val("priceKg");
+    var thickness    = val("thickness");
+    var density      = val("density");
+    var area         = val("area");
+    var qty          = val("qty");
+    var cutLength    = val("cutLength");
+    var speed        = val("speed");
+    var pierceTime   = val("pierceTime");
+    var pierceCount  = val("pierceCount");
+    var setupTime    = val("setupTime");
+    var machineHour  = val("machineHour");
+    var gasHour      = val("gasHour");
+    var salaryHour   = val("salaryHour");
+    var markup       = val("markup");
+    var vat          = val("vat");
+
+    var massPerPart = area * thickness / 1000 * density;
+    var matPerPart  = massPerPart * priceKg;
+
+    var cutTimeMin  = (speed > 0 ? cutLength / speed : 0) + pierceCount * pierceTime / 60;
+    var hourTotal   = machineHour + gasHour + salaryHour;
+
+    var cutCostPerPart = cutTimeMin / 60 * hourTotal;
+    var partCost       = matPerPart + cutCostPerPart;
+    var setupCost      = setupTime / 60 * hourTotal;
+    var batchCost      = partCost * qty + setupCost;
+
+    var markupRate = markup / 100;
+    var vatRate    = vat / 100;
+
+    var priceNoVat   = batchCost * (1 + markupRate);
+    var priceTotal   = priceNoVat * (1 + vatRate);
+    var pricePerPart = qty > 0 ? priceTotal / qty : 0;
+
+    return {
+      material: $("material").value,
+      thickness: thickness,
+      qty: qty,
+      massPerPart: massPerPart,
+      matPerPart: matPerPart,
+      cutTimeMin: cutTimeMin,
+      hourTotal: hourTotal,
+      cutCostPerPart: cutCostPerPart,
+      partCost: partCost,
+      setupCost: setupCost,
+      batchCost: batchCost,
+      priceNoVat: priceNoVat,
+      priceTotal: priceTotal,
+      pricePerPart: pricePerPart
+    };
+  }
+
+  /* ==================== ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ==================== */
+
+  function recalc() {
+    var d = calculate();
+
+    $("outMass").textContent        = fmt(d.massPerPart, 3) + " кг";
+    $("outMatPerPart").textContent  = money(d.matPerPart);
+    $("outCutTime").textContent     = fmt(d.cutTimeMin, 3) + " мин";
+    $("outHourTotal").textContent   = money(d.hourTotal) + " / час";
+    $("outCutCost").textContent     = money(d.cutCostPerPart);
+    $("outPartCost").textContent    = money(d.partCost);
+    $("outSetupCost").textContent   = money(d.setupCost);
+    $("outBatchCost").textContent   = money(d.batchCost);
+    $("outPriceNoVat").textContent  = money(d.priceNoVat);
+
+    $("sumMat").textContent      = money(d.matPerPart);
+    $("sumCut").textContent      = money(d.cutCostPerPart);
+    $("sumPart").textContent     = money(d.partCost);
+    $("sumBatch").textContent    = money(d.batchCost);
+    $("sumNoVat").textContent    = money(d.priceNoVat);
+    $("sumTotal").textContent    = money(d.priceTotal);
+    $("sumPerPart").textContent  = money(d.pricePerPart);
+
+    renderKP(d);
+  }
+
+  /* ==================== ГЕНЕРАЦИЯ КП ==================== */
+
+  function renderKP(d) {
+    var now = new Date();
+    var dateStr = now.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+    var kpNumber = "КП-" + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + "-01";
+
+    var phone = ($("phone").value || "").trim();
+    var email = ($("email").value || "").trim();
+    var phoneDisplay = phone ? escapeHtml(phone) : "____________________";
+    var emailDisplay = email ? escapeHtml(email) : "____________________";
+
+    var html = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div style="font-size: 20px; font-weight: 800; color: #1e293b;">Коммерческое предложение</div>
+            <div style="font-size: 13px; color: #64748b; margin-top: 2px;">на услуги лазерной резки</div>
+          </div>
+          <div style="font-size: 13px; color: #64748b; text-align: right;">
+            <div>Дата: ${dateStr}</div>
+            <div>№ ${kpNumber}</div>
+          </div>
+        </div>
+
+        <p style="margin: 0 0 14px; font-size: 14px; color: #334155;">
+          Предлагаем Вам стоимость лазерной резки деталей из материала <strong>${escapeHtml(d.material)}</strong> толщиной <strong>${d.thickness} мм</strong>.
+        </p>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px;">
+          <thead>
+            <tr style="background: #f1f5f9;">
+              <th style="text-align: left; padding: 8px 10px; border: 1px solid #cbd5e1; font-weight: 600;">Параметр</th>
+              <th style="text-align: right; padding: 8px 10px; border: 1px solid #cbd5e1; font-weight: 600;">Значение</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 8px 10px; border: 1px solid #e2e8f0;">Материал</td>
+              <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right;">${escapeHtml(d.material)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 10px; border: 1px solid #e2e8f0;">Толщина листа</td>
+              <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right;">${d.thickness} мм</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 10px; border: 1px solid #e2e8f0;">Количество деталей</td>
+              <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right;">${d.qty} шт</td>
+            </tr>
+            <tr style="background: #f8fafc; font-weight: 600;">
+              <td style="padding: 8px 10px; border: 1px solid #e2e8f0;">Цена за 1 деталь (с НДС)</td>
+              <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right; color: #1d4ed8;">${money(d.pricePerPart)}</td>
+            </tr>
+            <tr style="background: #eff6ff; font-weight: 700; font-size: 15px;">
+              <td style="padding: 10px; border: 1px solid #bfdbfe;">Итого стоимость партии (с НДС)</td>
+              <td style="padding: 10px; border: 1px solid #bfdbfe; text-align: right; color: #1e40af;">${money(d.priceTotal)}</td>
+            </tr>
+            <tr style="font-size: 13px; color: #64748b;">
+              <td style="padding: 6px 10px; border: 1px solid #e2e8f0;">В том числе НДС</td>
+              <td style="padding: 6px 10px; border: 1px solid #e2e8f0; text-align: right;">${money(d.priceTotal - d.priceNoVat)}</td>
+            </tr>
+            <tr style="font-size: 13px; color: #64748b;">
+              <td style="padding: 6px 10px; border: 1px solid #e2e8f0;">Стоимость без НДС</td>
+              <td style="padding: 6px 10px; border: 1px solid #e2e8f0; text-align: right;">${money(d.priceNoVat)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; font-size: 13.5px; color: #334155;">
+          <div style="font-weight: 700; margin-bottom: 6px; color: #1e293b;">Контактные данные</div>
+          <div style="margin-bottom: 2px;"><strong>Телефон:</strong> ${phoneDisplay}</div>
+          <div><strong>E-mail:</strong> ${emailDisplay}</div>
+        </div>
+
+        <div style="font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+          <p style="margin: 0 0 4px;">• Цены указаны в рублях РФ.</p>
+          <p style="margin: 0;">• Срок действия предложения: 14 календарных дней.</p>
+        </div>
+      </div>
+    `;
+
+    $("kp-content").innerHTML = html;
+  }
+
+  /* ==================== СОБЫТИЯ ==================== */
+
+  var inputs = document.querySelectorAll("input");
+  for (var i = 0; i < inputs.length; i++) {
+    inputs[i].addEventListener("input", recalc);
+    inputs[i].addEventListener("change", recalc);
+  }
+
+  $("material").addEventListener("change", function () {
+    updateDensity();
+    recalc();
+  });
+
+  /* Сброс: защищённые поля не сбрасываются, пока заблокировано */
+  $("resetBtn").addEventListener("click", function () {
+    for (var key in DEFAULTS) {
+      if (!Object.prototype.hasOwnProperty.call(DEFAULTS, key)) continue;
+      if (isLocked && LOCKED_KEYS.indexOf(key) !== -1) continue;
+      var el = $(key);
+      if (el) el.value = DEFAULTS[key];
+    }
+    updateDensity();
+    recalc();
+  });
+
+  /* ==================== СТАРТ ==================== */
+  updateDensity();
+  applyLockState();
+  recalc();
+})();
+</script>
+</body>
+</html>
