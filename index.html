@@ -1,1138 +1,601 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Калькулятор стоимости лазерной резки + КП</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Калькулятор лазерной резки</title>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-  :root{
-    --bg:#f1f5f9;
-    --card:#ffffff;
-    --line:#e2e8f0;
-    --text:#0f172a;
-    --muted:#64748b;
-    --accent:#2563eb;
-    --accent-dark:#1d4ed8;
-    --input-bg:#fffbeb;
-    --input-border:#fbbf24;
-    --green:#059669;
-    --green-dark:#047857;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    padding:24px 16px 64px;
-    font-family:"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background:var(--bg);
-    color:var(--text);
-    font-size:15px;
-    line-height:1.45;
-  }
-  .wrap{max-width:1180px;margin:0 auto;}
-
-  header.page{margin-bottom:20px;}
-  header.page h1{font-size:26px;margin:0 0 6px;letter-spacing:-.3px;}
-  header.page p{margin:0;color:var(--muted);font-size:14px;}
-
-  .layout{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) 360px;
-    gap:20px;
-    align-items:start;
-  }
-  @media (max-width:980px){.layout{grid-template-columns:1fr;}}
-
-  .card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:18px 20px 20px;
-    box-shadow:0 1px 2px rgba(15,23,42,.04);
-    margin-bottom:18px;
-  }
-  .card h2{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    font-size:16px;
-    margin:0 0 14px;
-    padding-bottom:10px;
-    border-bottom:1px solid var(--line);
-  }
-  .card h2 .num{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    width:24px;height:24px;
-    border-radius:8px;
-    background:var(--accent);
-    color:#fff;
-    font-size:13px;
-    font-weight:700;
-    flex:none;
-  }
-
-  /* Кнопка блокировки в заголовке секции */
-  .lock-toggle{
-    margin-left:auto;
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:5px 10px;
-    font-family:inherit;
-    font-size:12.5px;
-    font-weight:600;
-    color:#92400e;
-    background:#fef3c7;
-    border:1px solid #fde68a;
-    border-radius:8px;
-    cursor:pointer;
-    transition:all .15s;
-    white-space:nowrap;
-  }
-  .lock-toggle:hover{background:#fde68a;border-color:#fcd34d;}
-  .lock-toggle.unlocked{
-    color:#065f46;
-    background:#ecfdf5;
-    border-color:#a7f3d0;
-  }
-  .lock-toggle.unlocked:hover{background:#d1fae5;border-color:#6ee7b7;}
-
-  .fields{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
-    gap:14px;
-  }
-  .field label{
-    display:block;
-    font-size:13px;
-    font-weight:600;
-    color:#334155;
-    margin-bottom:5px;
-  }
-  .field .hint{
-    display:block;
-    font-size:11.5px;
-    font-weight:400;
-    color:var(--muted);
-    margin-top:4px;
-  }
-  .input-wrap{
-    display:flex;
-    align-items:stretch;
-    border:1px solid var(--input-border);
-    background:var(--input-bg);
-    border-radius:9px;
-    overflow:hidden;
-    transition:box-shadow .15s, border-color .15s;
-  }
-  .input-wrap:focus-within{
-    border-color:var(--accent);
-    box-shadow:0 0 0 3px rgba(37,99,235,.15);
-  }
-  .input-wrap input{
-    flex:1;
-    min-width:0;
-    border:0;
-    outline:0;
-    background:transparent;
-    padding:9px 10px;
-    font-size:15px;
-    font-family:inherit;
-    color:var(--text);
-    font-weight:600;
-  }
-  .input-wrap input[type=text],
-  .input-wrap input[type=tel],
-  .input-wrap input[type=email]{font-weight:500;}
-  .input-wrap .unit{
-    display:flex;
-    align-items:center;
-    padding:0 10px;
-    font-size:12px;
-    color:var(--muted);
-    background:rgba(255,255,255,.6);
-    border-left:1px solid rgba(251,191,36,.5);
-    white-space:nowrap;
-  }
-
-  /* Заблокированное поле */
-  .input-wrap.locked{
-    border-color:var(--line);
-    background:#f1f5f9;
-  }
-  .input-wrap.locked input{
-    color:#64748b;
-    cursor:not-allowed;
-    font-weight:600;
-  }
-  .input-wrap.locked .unit{
-    background:rgba(255,255,255,.4);
-    border-left-color:rgba(203,213,225,.7);
-  }
-  .input-wrap.locked:focus-within{
-    border-color:var(--line);
-    box-shadow:none;
-  }
-
-  /* Select внутри input-wrap */
-  .input-wrap select{
-    flex:1;
-    min-width:0;
-    border:0;
-    outline:0;
-    background:transparent;
-    padding:9px 28px 9px 10px;
-    font-size:15px;
-    font-family:inherit;
-    color:var(--text);
-    font-weight:500;
-    cursor:pointer;
-    appearance:none;
-    -webkit-appearance:none;
-    -moz-appearance:none;
-    background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
-    background-repeat:no-repeat;
-    background-position:right 10px center;
-    background-size:12px;
-  }
-  .input-wrap select option{color:var(--text);}
-
-  /* Readonly-поле (плотность) */
-  .input-wrap.readonly{
-    border-color:var(--line);
-    background:#f1f5f9;
-  }
-  .input-wrap.readonly input{
-    color:#475569;
-    cursor:not-allowed;
-    font-weight:600;
-  }
-  .input-wrap.readonly .unit{
-    background:rgba(255,255,255,.5);
-    border-left-color:rgba(203,213,225,.7);
-  }
-
-  input[type=number]::-webkit-outer-spin-button,
-  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
-  input[type=number]{-moz-appearance:textfield;}
-
-  .calc{
-    margin-top:16px;
-    border-top:1px dashed var(--line);
-    padding-top:12px;
-    display:grid;
-    gap:8px;
-  }
-  .calc-row{
-    display:flex;
-    justify-content:space-between;
-    align-items:baseline;
-    gap:12px;
-    font-size:14px;
-  }
-  .calc-row span{color:var(--muted);}
-  .calc-row b{
-    font-weight:700;
-    font-variant-numeric:tabular-nums;
-    white-space:nowrap;
-  }
-  .calc-row.accent b{color:var(--accent-dark);}
-
-  /* Итоговая панель */
-  .summary{position:sticky;top:20px;}
-  .summary .card{padding:20px;}
-  .summary h2{border-bottom:0;padding-bottom:0;margin-bottom:16px;}
-  .sum-line{
-    display:flex;
-    justify-content:space-between;
-    align-items:baseline;
-    gap:10px;
-    padding:7px 0;
-    font-size:14px;
-    border-bottom:1px dashed var(--line);
-  }
-  .sum-line:last-of-type{border-bottom:0;}
-  .sum-line span{color:var(--muted);}
-  .sum-line b{font-variant-numeric:tabular-nums;white-space:nowrap;}
-
-  .total-box{
-    margin-top:14px;
-    background:linear-gradient(135deg,#eff6ff,#e0f2fe);
-    border:1px solid #bfdbfe;
-    border-radius:12px;
-    padding:14px 16px;
-  }
-  .total-box .label{
-    font-size:11.5px;
-    text-transform:uppercase;
-    letter-spacing:.6px;
-    color:#1e40af;
-    font-weight:700;
-  }
-  .total-box .value{
-    font-size:26px;
-    font-weight:800;
-    color:var(--accent-dark);
-    font-variant-numeric:tabular-nums;
-    line-height:1.2;
-    margin-top:2px;
-    letter-spacing:-.5px;
-  }
-  .total-box.per-part{
-    background:linear-gradient(135deg,#ecfdf5,#d1fae5);
-    border-color:#a7f3d0;
-  }
-  .total-box.per-part .label{color:#065f46;}
-  .total-box.per-part .value{color:var(--green-dark);}
-
-  .btn{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-    width:100%;
-    margin-top:16px;
-    padding:11px 16px;
-    font:inherit;
-    font-weight:600;
-    color:#fff;
-    background:var(--accent);
-    border:0;
-    border-radius:10px;
-    cursor:pointer;
-    transition:background .15s;
-  }
-  .btn:hover{background:var(--accent-dark);}
-  .btn.ghost{
-    background:#fff;
-    color:#334155;
-    border:1px solid var(--line);
-    margin-top:10px;
-  }
-  .btn.ghost:hover{background:#f8fafc;}
-
-  .note{
-    font-size:12px;
-    color:var(--muted);
-    margin-top:12px;
-    line-height:1.5;
-  }
-
-  /* Стили для КП */
-  #kp-content {
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 24px;
-    font-size: 14px;
-  }
-  #kp-content table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  #kp-content th, #kp-content td {
-    border: 1px solid #cbd5e1;
-  }
-
-  /* Модальное окно пароля */
-  .modal-overlay{
-    position:fixed;
-    inset:0;
-    background:rgba(15,23,42,.55);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:1000;
-    padding:16px;
-  }
-  .modal-overlay.active{display:flex;}
-  .modal{
-    background:#fff;
-    border-radius:14px;
-    padding:24px;
-    max-width:420px;
-    width:100%;
-    box-shadow:0 20px 40px rgba(15,23,42,.25);
-  }
-  .modal.shake{animation:shake .35s;}
-  @keyframes shake{
-    0%,100%{transform:translateX(0);}
-    25%{transform:translateX(-7px);}
-    75%{transform:translateX(7px);}
-  }
-  .modal-title{
-    font-size:17px;
-    font-weight:700;
-    margin-bottom:10px;
-    color:#1e293b;
-  }
-  .modal-text{
-    font-size:14px;
-    color:#64748b;
-    margin-bottom:14px;
-    line-height:1.45;
-  }
-  .modal-input{
-    width:100%;
-    padding:11px 12px;
-    font-size:20px;
-    letter-spacing:6px;
-    text-align:center;
-    font-family:inherit;
-    border:1px solid #cbd5e1;
-    border-radius:9px;
-    outline:none;
-    transition:border-color .15s, box-shadow .15s;
-  }
-  .modal-input:focus{
-    border-color:var(--accent);
-    box-shadow:0 0 0 3px rgba(37,99,235,.15);
-  }
-  .modal-error{
-    color:#dc2626;
-    font-size:13px;
-    margin-top:8px;
-    min-height:18px;
-    font-weight:600;
-  }
-  .modal-actions{
-    display:flex;
-    gap:10px;
-    margin-top:16px;
-  }
-  .modal-actions .btn{
-    flex:1;
-    margin:0;
-    width:auto;
-  }
-
-  /* Печать только КП */
-  @media print {
-    body * { visibility: hidden; }
-    #kp-section, #kp-section * { visibility: visible; }
-    #kp-section {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      margin: 0;
-      padding: 0;
-      border: none;
-      box-shadow: none;
-    }
-    #kp-section .btn { display: none; }
-    #kp-section .kp-inputs { display: none; }
-    #kp-content {
-      border: none !important;
-      padding: 0 !important;
-      background: #fff !important;
-    }
-    .layout, header.page, .summary, .modal-overlay { display: none !important; }
-  }
+/* Layout: форма слева (материал → деталь/DXF → закрытые параметры → наценка → данные КП), липкая сводка цены справа. */
+:root{
+  --bg:#eceff1; --surface:#ffffff; --ink:#14191d; --muted:#5a6670; --line:#d3d9de; --field:#f5f7f8;
+  --accent:#0a6f6a; --accent-ink:#ffffff; --accent-soft:#dcefed; --warn:#9a5b00; --warn-soft:#fbeed6; --bad:#b3261e;
+  --font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1316; --surface:#171c20; --ink:#e7ecef; --muted:#93a0aa; --line:#2a3239; --field:#1e252a;
+  --accent:#3cc2b8; --accent-ink:#06201e; --accent-soft:#17312f; --warn:#f0b457; --warn-soft:#33270f; --bad:#ff8a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1316; --surface:#171c20; --ink:#e7ecef; --muted:#93a0aa; --line:#2a3239; --field:#1e252a;
+  --accent:#3cc2b8; --accent-ink:#06201e; --accent-soft:#17312f; --warn:#f0b457; --warn-soft:#33270f; --bad:#ff8a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--font);padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+h1{font-size:26px;font-weight:600;letter-spacing:-.01em;margin:0;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px 20px}
+h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 14px;display:flex;align-items:center;gap:8px}
+h2 b{font-family:var(--mono);font-weight:500;color:var(--accent)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 18px}
+.f{min-width:0}
+.f label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.in{display:flex;align-items:stretch;background:var(--field);border:1px solid var(--line);border-radius:6px}
+.in:focus-within{border-color:var(--accent);outline:2px solid var(--accent-soft)}
+.in input,.in select{flex:1;min-width:0;background:transparent;border:0;color:var(--ink);font:500 15px var(--mono);padding:8px 10px;outline:none;font-variant-numeric:tabular-nums}
+.in select{font-family:var(--font)}
+.in span{padding:8px 10px 8px 0;color:var(--muted);font-size:13px;white-space:nowrap;align-self:center}
+.f small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.f.wide{grid-column:1/-1}
+textarea{width:100%;background:var(--field);border:1px solid var(--line);border-radius:6px;color:var(--ink);font:14px var(--font);padding:8px 10px;resize:vertical;min-height:64px}
+textarea:focus{border-color:var(--accent);outline:2px solid var(--accent-soft)}
+input[type=text].txt{font-family:var(--font)}
+button{font:500 14px var(--font);cursor:pointer;border-radius:6px;padding:8px 14px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+button:hover{border-color:var(--accent)}
+button:focus-visible,a:focus-visible,.drop:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.primary:hover{filter:brightness(1.08)}
+button:disabled{opacity:.55;cursor:wait}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;border:1.5px dashed var(--line);border-radius:8px;padding:18px;cursor:pointer;background:var(--field);color:var(--muted);transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop strong{color:var(--ink);font-weight:500}
+.drop input{position:absolute;opacity:0;width:1px;height:1px}
+.dx{margin-top:14px;display:flex;flex-direction:column;gap:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{background:var(--field);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.stat div{font-size:12px;color:var(--muted)}
+.stat b{font:500 17px var(--mono);font-variant-numeric:tabular-nums}
+canvas{width:100%;height:240px;display:block;background:var(--field);border:1px solid var(--line);border-radius:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px 3px 8px;font-size:13px;background:var(--field);cursor:pointer}
+.chip input{accent-color:var(--accent);margin:0}
+.chip em{font:12px var(--mono);color:var(--muted);font-style:normal}
+.note{font-size:13px;color:var(--muted);margin:0}
+.msg{font-size:13px;padding:8px 10px;border-radius:6px;background:var(--warn-soft);color:var(--warn)}
+.msg.err{background:var(--warn-soft);color:var(--bad)}
+.tag{font:500 12px var(--mono);padding:2px 8px;border-radius:4px;background:var(--accent-soft);color:var(--accent)}
+.tag.manual{background:var(--warn-soft);color:var(--warn)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lock{border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.lock h2{color:var(--warn)}
+.lock svg{flex:none}
+.pw{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.pw .in{max-width:180px}
+.aside{position:sticky;top:16px;display:flex;flex-direction:column;gap:14px}
+.total{background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:18px 20px}
+.total small{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+.total .big{font:500 34px/1.15 var(--mono);font-variant-numeric:tabular-nums;margin:6px 0 2px;word-break:break-word}
+.total .per{font:14px var(--mono);opacity:.92}
+.sum{width:100%;border-collapse:collapse;font-size:14px}
+.sum td{padding:6px 0;border-bottom:1px solid var(--line);vertical-align:baseline}
+.sum td:last-child{text-align:right;font:500 14px var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:10px}
+.sum tr:last-child td{border-bottom:0}
+.sum .sub td{color:var(--muted)}
+.sum .strong td{font-weight:600}
+body:not([data-unlocked]) .priv{display:none}
+#status{font-size:13px;margin:8px 0 0;min-height:1em;color:var(--muted)}
+.kpbox{position:fixed;left:-10000px;top:0;width:794px}
+/* КП печатается на белой бумаге, поэтому цвета заданы явно и не зависят от темы */
+.kp{width:794px;height:1120px;overflow:hidden;background:#fff;color:#111;padding:52px 56px;font:13px/1.45 'IBM Plex Sans',Arial,sans-serif}
+.kp h1{font-size:24px;margin:0 0 4px;color:#111}
+.kp .top{display:flex;justify-content:space-between;gap:24px;border-bottom:2px solid #0a6f6a;padding-bottom:14px}
+.kp .co{font-size:18px;font-weight:600}
+.kp .det{white-space:pre-line;color:#444;font-size:12px;margin-top:4px;max-width:330px}
+.kp .meta{text-align:right;color:#333}
+.kp .meta b{display:block;font-size:15px;color:#0a6f6a}
+.kp .to{margin:20px 0 6px;font-size:14px}
+.kp table{width:100%;border-collapse:collapse;margin-top:16px}
+.kp th{background:#e9eeee;text-align:left;font-weight:600;font-size:12px;padding:8px;border:1px solid #c5cdcd}
+.kp td{padding:9px 8px;border:1px solid #c5cdcd;vertical-align:top}
+.kp .r{text-align:right;white-space:nowrap}
+.kp .tot{margin:14px 0 0 auto;width:330px}
+.kp .tot div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #ddd}
+.kp .tot .all{font-size:16px;font-weight:600;border-bottom:2px solid #0a6f6a;color:#0a6f6a}
+.kp h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#555;margin:24px 0 6px}
+.kp ul{margin:0;padding-left:18px}
+.kp .sign{margin-top:44px;display:flex;justify-content:space-between;color:#444}
+@media (max-width:900px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .aside{position:static;order:-1}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+
 </head>
 <body>
 <div class="wrap">
-
-  <header class="page">
-    <h1>Калькулятор стоимости лазерной резки</h1>
-    <p>Жёлтые поля — данные для заполнения. Остальное считается автоматически.</p>
-  </header>
-
-  <div class="layout">
-
-    <!-- ЛЕВАЯ КОЛОНКА: ВВОД -->
-    <main>
-
-      <!-- 1. Материал -->
-      <section class="card">
-        <h2><span class="num">1</span> Материал</h2>
-        <div class="fields">
-
-          <div class="field">
-            <label for="material">Материал</label>
-            <div class="input-wrap">
-              <select id="material">
-                <option value="Черная сталь" data-density="7850" selected>Черная сталь</option>
-                <option value="Нержавеющая сталь" data-density="7900">Нержавеющая сталь</option>
-                <option value="Алюминий" data-density="2700">Алюминий</option>
-                <option value="Медь" data-density="8930">Медь</option>
-              </select>
-            </div>
-            <span class="hint">Выберите материал из списка</span>
-          </div>
-
-          <div class="field">
-            <label for="priceKg">Цена материала за 1 кг</label>
-            <div class="input-wrap">
-              <input id="priceKg" type="number" value="70" step="any" min="0">
-              <span class="unit">руб/кг</span>
-            </div>
-            <span class="hint">Цена закупки листового металла</span>
-          </div>
-
-          <div class="field">
-            <label for="thickness">Толщина листа</label>
-            <div class="input-wrap">
-              <input id="thickness" type="number" value="4" step="any" min="0">
-              <span class="unit">мм</span>
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="density">Плотность материала (авто)</label>
-            <div class="input-wrap readonly">
-              <input id="density" type="number" value="7850" step="any" min="0" readonly>
-              <span class="unit">кг/м³</span>
-            </div>
-            <span class="hint">Рассчитывается по выбранному материалу</span>
-          </div>
-
-          <div class="field">
-            <label for="area">Площадь одной детали</label>
-            <div class="input-wrap">
-              <input id="area" type="number" value="0.05" step="any" min="0">
-              <span class="unit">м²</span>
-            </div>
-            <span class="hint">Площадь заготовки с учётом отхода при раскрое</span>
-          </div>
-
-          <div class="field">
-            <label for="qty">Количество деталей</label>
-            <div class="input-wrap">
-              <input id="qty" type="number" value="60" step="1" min="1">
-              <span class="unit">шт</span>
-            </div>
-          </div>
-
-        </div>
-
-        <div class="calc">
-          <div class="calc-row">
-            <span>Масса одной детали (расчёт)</span>
-            <b id="outMass">—</b>
-          </div>
-          <div class="calc-row accent">
-            <span>Стоимость материала на 1 деталь</span>
-            <b id="outMatPerPart">—</b>
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. Параметры реза -->
-      <section class="card">
-        <h2>
-          <span class="num">2</span> Параметры реза
-          <button class="lock-toggle" type="button" data-role="lockBtn">🔒 Пароль</button>
-        </h2>
-        <div class="fields">
-
-          <div class="field">
-            <label for="cutLength">Длина реза на 1 деталь</label>
-            <div class="input-wrap">
-              <input id="cutLength" type="number" value="4640" step="any" min="0">
-              <span class="unit">мм</span>
-            </div>
-            <span class="hint">Суммарная длина контуров + отверстий</span>
-          </div>
-
-          <div class="field">
-            <label for="speed">Скорость резки</label>
-            <div class="input-wrap">
-              <input id="speed" type="number" value="1500" step="any" min="1">
-              <span class="unit">мм/мин</span>
-            </div>
-            <span class="hint">Зависит от мощности лазера и толщины металла</span>
-          </div>
-
-          <div class="field">
-            <label for="pierceTime">Время на 1 прошивку (врезание)</label>
-            <div class="input-wrap">
-              <input id="pierceTime" type="number" value="0.8" step="any" min="0">
-              <span class="unit">сек</span>
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="pierceCount">Кол-во прошивок на 1 деталь</label>
-            <div class="input-wrap">
-              <input id="pierceCount" type="number" value="60" step="1" min="0">
-              <span class="unit">шт</span>
-            </div>
-            <span class="hint">Число отдельных контуров / отверстий</span>
-          </div>
-
-          <div class="field">
-            <label for="setupTime">Время на наладку / загрузку листа</label>
-            <div class="input-wrap">
-              <input id="setupTime" type="number" value="5" step="any" min="0">
-              <span class="unit">мин</span>
-            </div>
-            <span class="hint">Разовое время на весь заказ (не на деталь)</span>
-          </div>
-
-        </div>
-
-        <div class="calc">
-          <div class="calc-row accent">
-            <span>Время резки 1 детали (расчёт)</span>
-            <b id="outCutTime">—</b>
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. Стоимость станко-часа -->
-      <section class="card">
-        <h2>
-          <span class="num">3</span> Стоимость станко-часа
-          <button class="lock-toggle" type="button" data-role="lockBtn">🔒 Пароль</button>
-        </h2>
-        <div class="fields">
-
-          <div class="field">
-            <label for="machineHour">Стоимость машино-часа</label>
-            <div class="input-wrap">
-              <input id="machineHour" type="number" value="1800" step="any" min="0">
-              <span class="unit">руб/час</span>
-            </div>
-            <span class="hint">Амортизация, ремонт, электроэнергия, обслуживание</span>
-          </div>
-
-          <div class="field">
-            <label for="gasHour">Расход газа (кислород / азот) в час</label>
-            <div class="input-wrap">
-              <input id="gasHour" type="number" value="350" step="any" min="0">
-              <span class="unit">руб/час</span>
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="salaryHour">Зарплата оператора в час</label>
-            <div class="input-wrap">
-              <input id="salaryHour" type="number" value="500" step="any" min="0">
-              <span class="unit">руб/час</span>
-            </div>
-          </div>
-
-        </div>
-
-        <div class="calc">
-          <div class="calc-row accent">
-            <span>Итого стоимость часа работы</span>
-            <b id="outHourTotal">—</b>
-          </div>
-        </div>
-      </section>
-
-      <!-- 4. Себестоимость -->
-      <section class="card">
-        <h2><span class="num">4</span> Себестоимость детали и партии</h2>
-        <div class="calc" style="margin-top:0;border-top:0;padding-top:0;">
-          <div class="calc-row">
-            <span>Стоимость резки 1 детали</span>
-            <b id="outCutCost">—</b>
-          </div>
-          <div class="calc-row">
-            <span>Себестоимость 1 детали (материал + резка)</span>
-            <b id="outPartCost">—</b>
-          </div>
-          <div class="calc-row">
-            <span>Стоимость наладки (на партию)</span>
-            <b id="outSetupCost">—</b>
-          </div>
-          <div class="calc-row accent">
-            <span>Себестоимость всей партии</span>
-            <b id="outBatchCost">—</b>
-          </div>
-        </div>
-      </section>
-
-      <!-- 5. Наценка и НДС -->
-      <section class="card">
-        <h2><span class="num">5</span> Наценка, НДС и итоговая цена</h2>
-        <div class="fields">
-
-          <div class="field">
-            <label for="markup">Наценка (прибыль)</label>
-            <div class="input-wrap">
-              <input id="markup" type="number" value="50" step="any" min="0">
-              <span class="unit">%</span>
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="vat">НДС</label>
-            <div class="input-wrap">
-              <input id="vat" type="number" value="22" step="any" min="0">
-              <span class="unit">%</span>
-            </div>
-            <span class="hint">Укажите 0, если работаете без НДС</span>
-          </div>
-
-        </div>
-
-        <div class="calc">
-          <div class="calc-row">
-            <span>Цена партии с наценкой (без НДС)</span>
-            <b id="outPriceNoVat">—</b>
-          </div>
-        </div>
-      </section>
-
-    </main>
-
-    <!-- ПРАВАЯ КОЛОНКА: ИТОГИ -->
-    <aside class="summary">
-      <div class="card">
-        <h2>Итог расчёта</h2>
-
-        <div class="sum-line">
-          <span>Материал на 1 деталь</span>
-          <b id="sumMat">—</b>
-        </div>
-        <div class="sum-line">
-          <span>Резка 1 детали</span>
-          <b id="sumCut">—</b>
-        </div>
-        <div class="sum-line">
-          <span>Себестоимость 1 детали</span>
-          <b id="sumPart">—</b>
-        </div>
-        <div class="sum-line">
-          <span>Себестоимость партии</span>
-          <b id="sumBatch">—</b>
-        </div>
-
-        <div class="total-box">
-          <div class="label">Цена партии с наценкой (без НДС)</div>
-          <div class="value" id="sumNoVat">—</div>
-        </div>
-
-        <div class="total-box">
-          <div class="label">Итоговая цена партии (с НДС)</div>
-          <div class="value" id="sumTotal">—</div>
-        </div>
-
-        <div class="total-box per-part">
-          <div class="label">Цена за 1 деталь (с НДС)</div>
-          <div class="value" id="sumPerPart">—</div>
-        </div>
-
-        <button class="btn ghost" type="button" id="resetBtn">Сбросить к значениям по умолчанию</button>
-
-        <p class="note">
-          Параметры реза и стоимость станко-часа защищены паролем.
-          Остальные поля можно менять свободно.
-        </p>
-      </div>
-    </aside>
-
+<header>
+  <div>
+    <h1>Калькулятор лазерной резки</h1>
+    <p>Загрузите DXF, и длина реза и число врезок подставятся сами. Цена и КП обновляются по ходу ввода.</p>
   </div>
+</header>
 
-  <!-- КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ -->
-  <section class="card" id="kp-section">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
-      <h2 style="margin:0; border:0; padding:0;"><span class="num">📄</span> Коммерческое предложение</h2>
-      <button class="btn" type="button" onclick="window.print()" style="width:auto; margin:0;">🖨 Печать КП</button>
-    </div>
+<div class="grid">
+<div class="col">
 
-    <!-- Контактные данные для КП -->
-    <div class="kp-inputs" style="margin-bottom:18px;">
-      <div class="fields">
-        <div class="field">
-          <label for="phone">Телефон для КП</label>
-          <div class="input-wrap">
-            <input id="phone" type="tel" placeholder="+7 (___) ___-__-__">
-            <span class="unit">тел</span>
-          </div>
-        </div>
-        <div class="field">
-          <label for="email">E-mail для КП</label>
-          <div class="input-wrap">
-            <input id="email" type="email" placeholder="info@example.ru">
-            <span class="unit">@</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="kp-content">
-      <!-- Динамическое содержимое КП -->
+  <section class="card">
+    <h2><b>1</b> Материал</h2>
+    <div class="fields">
+      <div class="f"><label for="preset">Подставить материал</label>
+        <div class="in"><select id="preset">
+          <option value="">Выбрать…</option>
+          <option value="Сталь ст3|7850">Сталь ст3, 7850</option>
+          <option value="Нержавеющая сталь|7900">Нержавеющая сталь, 7900</option>
+          <option value="Алюминий|2700">Алюминий, 2700</option>
+          <option value="Латунь|8500">Латунь, 8500</option>
+          <option value="Медь|8900">Медь, 8900</option>
+        </select></div></div>
+      <div class="f"><label for="mat">Материал</label><div class="in"><input id="mat" class="txt" type="text" value="Сталь ст3" style="font-family:var(--font)"></div></div>
+      <div class="f"><label for="price">Цена материала за 1 кг</label><div class="in"><input id="price" type="number" step="any" min="0" value="70"><span>₽/кг</span></div></div>
+      <div class="f"><label for="thk">Толщина листа</label><div class="in"><input id="thk" type="number" step="any" min="0" value="4"><span>мм</span></div></div>
+      <div class="f"><label for="dens">Плотность</label><div class="in"><input id="dens" type="number" step="any" min="0" value="7850"><span>кг/м³</span></div></div>
+      <div class="f"><label for="area">Площадь одной детали</label><div class="in"><input id="area" type="number" step="any" min="0" value="0.05"><span>м²</span></div><small>С учётом отхода при раскрое</small></div>
     </div>
   </section>
 
-</div>
-
-<!-- Модальное окно для ввода пароля -->
-<div class="modal-overlay" id="pwdModal">
-  <div class="modal" id="pwdModalBox">
-    <div class="modal-title">🔒 Доступ по паролю</div>
-    <div class="modal-text">
-      Введите пароль для редактирования параметров реза и стоимости станко-часа.
-    </div>
-    <input type="password" id="pwdInput" class="modal-input" placeholder="••••" autocomplete="off" inputmode="numeric">
-    <div class="modal-error" id="pwdError"></div>
-    <div class="modal-actions">
-      <button class="btn ghost" type="button" id="pwdCancel">Отмена</button>
-      <button class="btn" type="button" id="pwdOk">Разблокировать</button>
-    </div>
-  </div>
-</div>
-
-<script>
-(function () {
-  "use strict";
-
-  /* ==================== КОНСТАНТЫ ==================== */
-  var LOCK_PASSWORD = "0000";
-
-  var LOCKED_KEYS = [
-    "cutLength", "speed", "pierceTime", "pierceCount", "setupTime",
-    "machineHour", "gasHour", "salaryHour"
-  ];
-
-  var DEFAULTS = {
-    material: "Черная сталь",
-    priceKg: 70,
-    thickness: 4,
-    area: 0.05,
-    qty: 60,
-    cutLength: 4640,
-    speed: 1500,
-    pierceTime: 0.8,
-    pierceCount: 60,
-    setupTime: 5,
-    machineHour: 1800,
-    gasHour: 350,
-    salaryHour: 500,
-    markup: 50,
-    vat: 22,
-    phone: "",
-    email: ""
-  };
-
-  var isLocked = true;
-
-  var $ = function (id) { return document.getElementById(id); };
-
-  function val(id) {
-    var v = parseFloat($(id).value);
-    return isFinite(v) ? v : 0;
-  }
-
-  function fmt(v, digits) {
-    if (!isFinite(v)) v = 0;
-    digits = (digits === undefined) ? 2 : digits;
-    return v.toLocaleString("ru-RU", {
-      minimumFractionDigits: digits,
-      maximumFractionDigits: digits
-    });
-  }
-
-  function money(v, digits) {
-    return fmt(v, digits === undefined ? 2 : digits) + " ₽";
-  }
-
-  function escapeHtml(str) {
-    return String(str).replace(/[&<>"']/g, function(m) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
-    });
-  }
-
-  /* ==================== БЛОКИРОВКА ==================== */
-
-  function applyLockState() {
-    /* Все защищённые поля -> readOnly + стиль */
-    for (var i = 0; i < LOCKED_KEYS.length; i++) {
-      var id = LOCKED_KEYS[i];
-      var el = $(id);
-      if (!el) continue;
-      el.readOnly = isLocked;
-      var wrap = el.closest(".input-wrap");
-      if (wrap) wrap.classList.toggle("locked", isLocked);
-    }
-
-    /* Все кнопки блокировки в заголовках -> обновить вид */
-    var btns = document.querySelectorAll('[data-role="lockBtn"]');
-    for (var j = 0; j < btns.length; j++) {
-      var btn = btns[j];
-      if (isLocked) {
-        btn.classList.remove("unlocked");
-        btn.innerHTML = "🔒 Пароль";
-        btn.title = "Редактирование только по паролю";
-      } else {
-        btn.classList.add("unlocked");
-        btn.innerHTML = "🔓 Открыто";
-        btn.title = "Нажмите, чтобы заблокировать";
-      }
-    }
-  }
-
-  function openPasswordModal() {
-    $("pwdInput").value = "";
-    $("pwdError").textContent = "";
-    $("pwdModalBox").classList.remove("shake");
-    $("pwdModal").classList.add("active");
-    setTimeout(function () { $("pwdInput").focus(); }, 60);
-  }
-
-  function closePasswordModal() {
-    $("pwdModal").classList.remove("active");
-  }
-
-  function tryUnlock() {
-    if ($("pwdInput").value === LOCK_PASSWORD) {
-      isLocked = false;
-      closePasswordModal();
-      applyLockState();
-    } else {
-      $("pwdError").textContent = "Неверный пароль";
-      $("pwdModalBox").classList.remove("shake");
-      /* перезапуск анимации */
-      void $("pwdModalBox").offsetWidth;
-      $("pwdModalBox").classList.add("shake");
-      $("pwdInput").value = "";
-      $("pwdInput").focus();
-    }
-  }
-
-  function toggleLock() {
-    if (isLocked) {
-      openPasswordModal();
-    } else {
-      isLocked = true;
-      applyLockState();
-    }
-  }
-
-  /* Навешиваем обработчики на кнопки блокировки */
-  var lockBtns = document.querySelectorAll('[data-role="lockBtn"]');
-  for (var k = 0; k < lockBtns.length; k++) {
-    lockBtns[k].addEventListener("click", toggleLock);
-  }
-
-  /* Модальное окно */
-  $("pwdOk").addEventListener("click", tryUnlock);
-  $("pwdCancel").addEventListener("click", closePasswordModal);
-
-  $("pwdInput").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") { e.preventDefault(); tryUnlock(); }
-    if (e.key === "Escape") { e.preventDefault(); closePasswordModal(); }
-  });
-
-  $("pwdModal").addEventListener("click", function (e) {
-    if (e.target === $("pwdModal")) closePasswordModal();
-  });
-
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && $("pwdModal").classList.contains("active")) {
-      closePasswordModal();
-    }
-  });
-
-  /* ==================== РАСЧЁТ ==================== */
-
-  function updateDensity() {
-    var sel = $("material");
-    var opt = sel.options[sel.selectedIndex];
-    var d = opt ? opt.getAttribute("data-density") : "7850";
-    $("density").value = d;
-  }
-
-  function calculate() {
-    var priceKg      = val("priceKg");
-    var thickness    = val("thickness");
-    var density      = val("density");
-    var area         = val("area");
-    var qty          = val("qty");
-    var cutLength    = val("cutLength");
-    var speed        = val("speed");
-    var pierceTime   = val("pierceTime");
-    var pierceCount  = val("pierceCount");
-    var setupTime    = val("setupTime");
-    var machineHour  = val("machineHour");
-    var gasHour      = val("gasHour");
-    var salaryHour   = val("salaryHour");
-    var markup       = val("markup");
-    var vat          = val("vat");
-
-    var massPerPart = area * thickness / 1000 * density;
-    var matPerPart  = massPerPart * priceKg;
-
-    var cutTimeMin  = (speed > 0 ? cutLength / speed : 0) + pierceCount * pierceTime / 60;
-    var hourTotal   = machineHour + gasHour + salaryHour;
-
-    var cutCostPerPart = cutTimeMin / 60 * hourTotal;
-    var partCost       = matPerPart + cutCostPerPart;
-    var setupCost      = setupTime / 60 * hourTotal;
-    var batchCost      = partCost * qty + setupCost;
-
-    var markupRate = markup / 100;
-    var vatRate    = vat / 100;
-
-    var priceNoVat   = batchCost * (1 + markupRate);
-    var priceTotal   = priceNoVat * (1 + vatRate);
-    var pricePerPart = qty > 0 ? priceTotal / qty : 0;
-
-    return {
-      material: $("material").value,
-      thickness: thickness,
-      qty: qty,
-      massPerPart: massPerPart,
-      matPerPart: matPerPart,
-      cutTimeMin: cutTimeMin,
-      hourTotal: hourTotal,
-      cutCostPerPart: cutCostPerPart,
-      partCost: partCost,
-      setupCost: setupCost,
-      batchCost: batchCost,
-      priceNoVat: priceNoVat,
-      priceTotal: priceTotal,
-      pricePerPart: pricePerPart
-    };
-  }
-
-  /* ==================== ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ==================== */
-
-  function recalc() {
-    var d = calculate();
-
-    $("outMass").textContent        = fmt(d.massPerPart, 3) + " кг";
-    $("outMatPerPart").textContent  = money(d.matPerPart);
-    $("outCutTime").textContent     = fmt(d.cutTimeMin, 3) + " мин";
-    $("outHourTotal").textContent   = money(d.hourTotal) + " / час";
-    $("outCutCost").textContent     = money(d.cutCostPerPart);
-    $("outPartCost").textContent    = money(d.partCost);
-    $("outSetupCost").textContent   = money(d.setupCost);
-    $("outBatchCost").textContent   = money(d.batchCost);
-    $("outPriceNoVat").textContent  = money(d.priceNoVat);
-
-    $("sumMat").textContent      = money(d.matPerPart);
-    $("sumCut").textContent      = money(d.cutCostPerPart);
-    $("sumPart").textContent     = money(d.partCost);
-    $("sumBatch").textContent    = money(d.batchCost);
-    $("sumNoVat").textContent    = money(d.priceNoVat);
-    $("sumTotal").textContent    = money(d.priceTotal);
-    $("sumPerPart").textContent  = money(d.pricePerPart);
-
-    renderKP(d);
-  }
-
-  /* ==================== ГЕНЕРАЦИЯ КП ==================== */
-
-  function renderKP(d) {
-    var now = new Date();
-    var dateStr = now.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
-    var kpNumber = "КП-" + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + "-01";
-
-    var phone = ($("phone").value || "").trim();
-    var email = ($("email").value || "").trim();
-    var phoneDisplay = phone ? escapeHtml(phone) : "____________________";
-    var emailDisplay = email ? escapeHtml(email) : "____________________";
-
-    var html = `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 100%;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
-          <div>
-            <div style="font-size: 20px; font-weight: 800; color: #1e293b;">Коммерческое предложение</div>
-            <div style="font-size: 13px; color: #64748b; margin-top: 2px;">на услуги лазерной резки</div>
-          </div>
-          <div style="font-size: 13px; color: #64748b; text-align: right;">
-            <div>Дата: ${dateStr}</div>
-            <div>№ ${kpNumber}</div>
-          </div>
-        </div>
-
-        <p style="margin: 0 0 14px; font-size: 14px; color: #334155;">
-          Предлагаем Вам стоимость лазерной резки деталей из материала <strong>${escapeHtml(d.material)}</strong> толщиной <strong>${d.thickness} мм</strong>.
-        </p>
-
-        <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px;">
-          <thead>
-            <tr style="background: #f1f5f9;">
-              <th style="text-align: left; padding: 8px 10px; border: 1px solid #cbd5e1; font-weight: 600;">Параметр</th>
-              <th style="text-align: right; padding: 8px 10px; border: 1px solid #cbd5e1; font-weight: 600;">Значение</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding: 8px 10px; border: 1px solid #e2e8f0;">Материал</td>
-              <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right;">${escapeHtml(d.material)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 10px; border: 1px solid #e2e8f0;">Толщина листа</td>
-              <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right;">${d.thickness} мм</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 10px; border: 1px solid #e2e8f0;">Количество деталей</td>
-              <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right;">${d.qty} шт</td>
-            </tr>
-            <tr style="background: #f8fafc; font-weight: 600;">
-              <td style="padding: 8px 10px; border: 1px solid #e2e8f0;">Цена за 1 деталь (с НДС)</td>
-              <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right; color: #1d4ed8;">${money(d.pricePerPart)}</td>
-            </tr>
-            <tr style="background: #eff6ff; font-weight: 700; font-size: 15px;">
-              <td style="padding: 10px; border: 1px solid #bfdbfe;">Итого стоимость партии (с НДС)</td>
-              <td style="padding: 10px; border: 1px solid #bfdbfe; text-align: right; color: #1e40af;">${money(d.priceTotal)}</td>
-            </tr>
-            <tr style="font-size: 13px; color: #64748b;">
-              <td style="padding: 6px 10px; border: 1px solid #e2e8f0;">В том числе НДС</td>
-              <td style="padding: 6px 10px; border: 1px solid #e2e8f0; text-align: right;">${money(d.priceTotal - d.priceNoVat)}</td>
-            </tr>
-            <tr style="font-size: 13px; color: #64748b;">
-              <td style="padding: 6px 10px; border: 1px solid #e2e8f0;">Стоимость без НДС</td>
-              <td style="padding: 6px 10px; border: 1px solid #e2e8f0; text-align: right;">${money(d.priceNoVat)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; font-size: 13.5px; color: #334155;">
-          <div style="font-weight: 700; margin-bottom: 6px; color: #1e293b;">Контактные данные</div>
-          <div style="margin-bottom: 2px;"><strong>Телефон:</strong> ${phoneDisplay}</div>
-          <div><strong>E-mail:</strong> ${emailDisplay}</div>
-        </div>
-
-        <div style="font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-          <p style="margin: 0 0 4px;">• Цены указаны в рублях РФ.</p>
-          <p style="margin: 0;">• Срок действия предложения: 14 календарных дней.</p>
-        </div>
+  <section class="card">
+    <h2><b>2</b> Деталь и файл DXF</h2>
+    <label class="drop" id="drop" tabindex="-1">
+      <input type="file" id="file" accept=".dxf">
+      <strong>Перетащите DXF сюда или нажмите, чтобы выбрать</strong>
+      <span>Текстовый DXF (ASCII). Линии, дуги, окружности, полилинии, сплайны, эллипсы, блоки.</span>
+    </label>
+    <div id="dxMsg" class="msg err" hidden></div>
+    <div class="dx" id="dx" hidden>
+      <div class="row"><span class="tag" id="dxName"></span><span class="note" id="dxInfo"></span></div>
+      <div class="fields">
+        <div class="f"><label for="units">Единицы чертежа</label><div class="in"><select id="units">
+          <option value="auto">Из файла</option><option value="1">Миллиметры</option><option value="10">Сантиметры</option><option value="1000">Метры</option><option value="25.4">Дюймы</option></select></div><small id="unitsNote"></small></div>
+        <div class="f"><label for="parts">Деталей в файле</label><div class="in"><input id="parts" type="number" min="1" step="1" value="1"><span>шт</span></div><small>Если в DXF несколько деталей, длина и врезки поделятся на это число</small></div>
       </div>
-    `;
+      <div class="stats">
+        <div class="stat"><div>Длина реза в файле</div><b id="stLen">—</b></div>
+        <div class="stat"><div>Врезок в файле</div><b id="stPierce">—</b></div>
+        <div class="stat"><div>Габарит</div><b id="stBox">—</b></div>
+      </div>
+      <canvas id="cv" aria-label="Предпросмотр DXF"></canvas>
+      <div>
+        <div class="note" style="margin-bottom:6px">Слои в расчёте</div>
+        <div class="chips" id="layers"></div>
+      </div>
+      <div class="row"><button type="button" id="useArea"></button><span class="note">Габарит прямоугольника вокруг детали, без учёта раскроя листа</span></div>
+    </div>
+    <div class="fields" style="margin-top:16px">
+      <div class="f"><label for="len">Длина реза на 1 деталь <span class="tag" id="lenTag" hidden></span></label><div class="in"><input id="len" type="number" step="any" min="0" value="4640"><span>мм</span></div></div>
+      <div class="f"><label for="pierce">Врезок на 1 деталь <span class="tag" id="pierceTag" hidden></span></label><div class="in"><input id="pierce" type="number" step="1" min="0" value="60"><span>шт</span></div><small>Число отдельных контуров и отверстий</small></div>
+      <div class="f"><label for="qty">Количество деталей</label><div class="in"><input id="qty" type="number" step="1" min="1" value="60"><span>шт</span></div></div>
+    </div>
+  </section>
 
-    $("kp-content").innerHTML = html;
-  }
+  <section class="card lock" id="lockCard">
+    <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><b style="color:inherit">3</b> Параметры реза и станко-час</h2>
+    <div id="lockedView">
+      <p class="note">Скорость резки, время врезки, наладка и стоимость станко-часа скрыты. Введите пароль, чтобы их увидеть и изменить.</p>
+      <div class="pw">
+        <button type="button" id="unlockBtn">Ввести пароль</button>
+        <form id="pwForm" class="pw" style="margin:0" hidden>
+          <div class="in"><input id="pw" type="password" inputmode="numeric" autocomplete="off" placeholder="Пароль" aria-label="Пароль"></div>
+          <button type="submit" class="primary">Открыть</button>
+          <button type="button" id="pwCancel">Отмена</button>
+        </form>
+      </div>
+      <div class="msg err" id="pwErr" hidden style="margin-top:10px">Неверный пароль</div>
+    </div>
+    <div id="openView" hidden>
+      <div class="fields">
+        <div class="f"><label for="speed">Скорость резки</label><div class="in"><input id="speed" type="number" step="any" min="0" value="1500"><span>мм/мин</span></div><small>Зависит от мощности лазера и толщины металла</small></div>
+        <div class="f"><label for="pt">Время на 1 врезку</label><div class="in"><input id="pt" type="number" step="any" min="0" value="0.8"><span>сек</span></div></div>
+        <div class="f"><label for="setup">Наладка и загрузка листа</label><div class="in"><input id="setup" type="number" step="any" min="0" value="5"><span>мин</span></div><small>Один раз на весь заказ</small></div>
+        <div class="f"><label for="mh">Станко-час (амортизация, ремонт, электричество)</label><div class="in"><input id="mh" type="number" step="any" min="0" value="1800"><span>₽/час</span></div></div>
+        <div class="f"><label for="gas">Газ (кислород или азот)</label><div class="in"><input id="gas" type="number" step="any" min="0" value="350"><span>₽/час</span></div></div>
+        <div class="f"><label for="op">Зарплата оператора</label><div class="in"><input id="op" type="number" step="any" min="0" value="500"><span>₽/час</span></div></div>
+      </div>
+      <div class="row" style="margin-top:14px"><span class="note">Итого час работы: <b id="hourTotal" style="font-family:var(--mono)"></b></span><button type="button" id="relock">Закрыть доступ</button></div>
+    </div>
+  </section>
 
-  /* ==================== СОБЫТИЯ ==================== */
+  <section class="card">
+    <h2><b>4</b> Наценка и НДС</h2>
+    <div class="fields">
+      <div class="f"><label for="markup">Наценка (прибыль)</label><div class="in"><input id="markup" type="number" step="any" min="0" value="50"><span>%</span></div></div>
+      <div class="f"><label for="vat">НДС</label><div class="in"><input id="vat" type="number" step="any" min="0" value="22"><span>%</span></div><small>Укажите 0, если работаете без НДС</small></div>
+    </div>
+  </section>
 
-  var inputs = document.querySelectorAll("input");
-  for (var i = 0; i < inputs.length; i++) {
-    inputs[i].addEventListener("input", recalc);
-    inputs[i].addEventListener("change", recalc);
-  }
+  <section class="card">
+    <h2><b>5</b> Данные для КП</h2>
+    <div class="fields">
+      <div class="f"><label for="kCompany">Ваша компания</label><div class="in"><input id="kCompany" class="txt" type="text" placeholder="ООО «Лазер-Сервис»" style="font-family:var(--font)"></div></div>
+      <div class="f"><label for="kClient">Клиент</label><div class="in"><input id="kClient" class="txt" type="text" placeholder="Название компании или ФИО" style="font-family:var(--font)"></div></div>
+      <div class="f wide"><label for="kDetails">Реквизиты и контакты</label><textarea id="kDetails" placeholder="ИНН, телефон, e-mail, адрес"></textarea></div>
+      <div class="f"><label for="kNum">Номер КП</label><div class="in"><input id="kNum" class="txt" type="text" style="font-family:var(--mono)"></div></div>
+      <div class="f"><label for="kDate">Дата</label><div class="in"><input id="kDate" type="date"></div></div>
+      <div class="f"><label for="kValid">Срок действия</label><div class="in"><input id="kValid" type="number" min="1" step="1" value="10"><span>дней</span></div></div>
+      <div class="f"><label for="kLead">Срок изготовления</label><div class="in"><input id="kLead" class="txt" type="text" value="5 рабочих дней" style="font-family:var(--font)"></div></div>
+      <div class="f"><label for="kPart">Название детали</label><div class="in"><input id="kPart" class="txt" type="text" placeholder="Например, кронштейн" style="font-family:var(--font)"></div></div>
+      <div class="f wide"><label for="kNote">Примечание</label><textarea id="kNote" maxlength="400" placeholder="Условия оплаты, доставка, допуски"></textarea></div>
+    </div>
+  </section>
+</div>
 
-  $("material").addEventListener("change", function () {
-    updateDensity();
-    recalc();
-  });
+<aside class="aside">
+  <div class="total">
+    <small>Итоговая цена партии, с НДС</small>
+    <div class="big" id="rTotal">—</div>
+    <div class="per" id="rPer">—</div>
+  </div>
+  <div class="card">
+    <table class="sum" id="sum"></table>
+  </div>
+  <div>
+    <button type="button" class="primary" id="kpBtn" style="width:100%;padding:12px">Скачать КП в PDF</button>
+    <p id="status" role="status"></p>
+  </div>
+</aside>
+</div>
+</div>
 
-  /* Сброс: защищённые поля не сбрасываются, пока заблокировано */
-  $("resetBtn").addEventListener("click", function () {
-    for (var key in DEFAULTS) {
-      if (!Object.prototype.hasOwnProperty.call(DEFAULTS, key)) continue;
-      if (isLocked && LOCKED_KEYS.indexOf(key) !== -1) continue;
-      var el = $(key);
-      if (el) el.value = DEFAULTS[key];
+<div class="kpbox" aria-hidden="true"><div class="kp" id="kpDoc"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+/*DXF-START*/
+const ap=(M,x,y)=>[M[0]*x+M[2]*y+M[4],M[1]*x+M[3]*y+M[5]];
+const compose=(M,N)=>[M[0]*N[0]+M[2]*N[1],M[1]*N[0]+M[3]*N[1],M[0]*N[2]+M[2]*N[3],M[1]*N[2]+M[3]*N[3],M[0]*N[4]+M[2]*N[5]+M[4],M[1]*N[4]+M[3]*N[5]+M[5]];
+const INS_MM={1:25.4,2:304.8,3:1609344,4:1,5:10,6:1000,7:1e6,8:0.0000254,9:0.0254,10:914.4,13:0.001,14:100,15:10000,16:1e5,17:1e6};
+const HANDLED=new Set(['LINE','CIRCLE','ARC','LWPOLYLINE','POLYLINE','SPLINE','ELLIPSE','INSERT']);
+const BENIGN=new Set(['TEXT','MTEXT','DIMENSION','LEADER','MLEADER','POINT','ATTRIB','ATTDEF','VIEWPORT','IMAGE','VERTEX','SEQEND','XLINE','RAY','TOLERANCE','WIPEOUT','UNDERLAY','PDFUNDERLAY']);
+
+function parseDXF(text){
+  if(text.startsWith('AutoCAD Binary DXF')) throw new Error('Это двоичный DXF. Сохраните чертёж как ASCII DXF (текстовый).');
+  const L=text.split(/\r?\n/), P=[];
+  for(let i=0;i+1<L.length;i+=2){P.push([parseInt(L[i].trim(),10),L[i+1].trim()]);}
+  let insunits=0,section=null,hv=null,curBlock=null,cur=null,hdr=false;
+  const blocks={},ents=[];
+  for(let i=0;i<P.length;i++){
+    const [c,v]=P[i];
+    if(c===0){
+      if(v==='SECTION'){section=P[i+1]?P[i+1][1]:null;cur=null;continue;}
+      if(v==='ENDSEC'){section=null;cur=null;continue;}
+      if(v==='EOF')break;
+      if(section==='ENTITIES'||section==='BLOCKS'){
+        if(v==='BLOCK'){curBlock={name:'',base:[0,0],ents:[]};hdr=true;cur=null;continue;}
+        if(v==='ENDBLK'){if(curBlock)blocks[curBlock.name]=curBlock;curBlock=null;cur=null;hdr=false;continue;}
+        hdr=false;cur={type:v,codes:[]};
+        if(section==='BLOCKS'){if(curBlock)curBlock.ents.push(cur);}else ents.push(cur);
+        continue;
+      }
+      cur=null;continue;
     }
-    updateDensity();
-    recalc();
-  });
+    if(section==='HEADER'){if(c===9)hv=v;else if(hv==='$INSUNITS'&&c===70)insunits=parseInt(v,10)||0;continue;}
+    if(hdr&&curBlock){if(c===2&&!curBlock.name)curBlock.name=v;else if(c===10)curBlock.base[0]=parseFloat(v)||0;else if(c===20)curBlock.base[1]=parseFloat(v)||0;continue;}
+    if(cur)cur.codes.push([c,v]);
+  }
+  return {insunits,blocks,ents};
+}
+function groupPoly(list){
+  const out=[];
+  for(let i=0;i<list.length;i++){
+    const e=list[i];
+    if(e.type==='POLYLINE'){e.verts=[];let j=i+1;while(j<list.length&&list[j].type==='VERTEX'){e.verts.push(list[j]);j++;}
+      if(j<list.length&&list[j].type==='SEQEND')j++;i=j-1;out.push(e);}
+    else if(e.type!=='VERTEX'&&e.type!=='SEQEND')out.push(e);
+  }
+  return out;
+}
+const g=(cs,c,d)=>{for(const k of cs)if(k[0]===c)return parseFloat(k[1]);return d;};
+const gs=(cs,c)=>{for(const k of cs)if(k[0]===c)return k[1];return null;};
+const ga=(cs,c)=>cs.filter(k=>k[0]===c).map(k=>parseFloat(k[1]));
+function arcPts(cx,cy,r,a0,sweep){const n=Math.max(2,Math.ceil(Math.abs(sweep)/(Math.PI/360)));const o=[];for(let i=0;i<=n;i++){const a=a0+sweep*i/n;o.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);}return o;}
+function bulgeSeg(p1,p2,b){
+  const dx=p2[0]-p1[0],dy=p2[1]-p1[1],d=Math.hypot(dx,dy);
+  if(!b||d===0)return [p2];
+  const th=4*Math.atan(b),h=(d/2)/Math.tan(th/2),mx=(p1[0]+p2[0])/2,my=(p1[1]+p2[1])/2;
+  const cx=mx+(-dy/d)*h,cy=my+(dx/d)*h,r=Math.abs(d/(2*Math.sin(th/2)));
+  const a0=Math.atan2(p1[1]-cy,p1[0]-cx);
+  return arcPts(cx,cy,r,a0,th).slice(1);
+}
+function polyPts(vs,closed){
+  if(!vs.length)return [];
+  const pts=[vs[0].p];
+  const n=closed?vs.length:vs.length-1;
+  for(let i=0;i<n;i++){const a=vs[i],bv=vs[(i+1)%vs.length];const seg=bulgeSeg(a.p,bv.p,a.b);
+    if(closed&&i===n-1){seg.pop();}
+    for(const q of seg)pts.push(q);}
+  return pts;
+}
+function splinePts(cs){
+  const deg=g(cs,71,3),flag=g(cs,70,0),knots=ga(cs,40),w=ga(cs,41);
+  const xs=ga(cs,10),ys=ga(cs,20),cp=xs.map((x,i)=>[x,ys[i]||0]);
+  const fx=ga(cs,11),fy=ga(cs,21),fit=fx.map((x,i)=>[x,fy[i]||0]);
+  let pts;
+  if(cp.length>deg&&knots.length===cp.length+deg+1){
+    const n=cp.length,lo=knots[deg],hi=knots[n],S=Math.max(64,n*24);pts=[];
+    for(let s=0;s<=S;s++){
+      let t=lo+(hi-lo)*s/S;if(s===S)t=hi-1e-12*(hi-lo||1);
+      let k=deg;while(k<n-1&&t>=knots[k+1])k++;
+      const dd=[];for(let j=0;j<=deg;j++){const i=k-deg+j,wt=w.length===n?w[i]:1;dd.push([cp[i][0]*wt,cp[i][1]*wt,wt]);}
+      for(let r=1;r<=deg;r++)for(let j=deg;j>=r;j--){
+        const i=k-deg+j,den=knots[i+deg-r+1]-knots[i],al=den?(t-knots[i])/den:0;
+        for(let q=0;q<3;q++)dd[j][q]=(1-al)*dd[j-1][q]+al*dd[j][q];}
+      const d=dd[deg];pts.push([d[0]/d[2],d[1]/d[2]]);
+    }
+  } else if(fit.length>1)pts=fit; else pts=cp;
+  return {pts,closed:!!(flag&1)};
+}
+function entPaths(e,M,layer,out,blocks,depth,skipped){
+  const cs=e.codes,t=e.type;
+  if(gs(cs,67)==='1')return;
+  let ly=gs(cs,8)||'0';if(ly==='0'&&layer)ly=layer;
+  const flip=g(cs,230,1)<0;
+  const fl=p=>flip?[-p[0],p[1]]:p;
+  const push=(pts,closed)=>{if(pts.length<2)return;const q=pts.map(p=>ap(M,p[0],p[1]));out.push({pts:q,closed:!!closed,layer:ly,type:t});};
+  if(t==='LINE'){push([[g(cs,10,0),g(cs,20,0)],[g(cs,11,0),g(cs,21,0)]],false);}
+  else if(t==='CIRCLE'){const r=g(cs,40,0);if(r>0)push(arcPts(0,0,r,0,2*Math.PI).slice(0,-1).map(p=>fl([p[0]+g(cs,10,0),p[1]+g(cs,20,0)])),true);}
+  else if(t==='ARC'){const r=g(cs,40,0);let a0=g(cs,50,0)*Math.PI/180,a1=g(cs,51,0)*Math.PI/180;let sw=a1-a0;while(sw<=0)sw+=2*Math.PI;
+    if(r>0)push(arcPts(g(cs,10,0),g(cs,20,0),r,a0,sw).map(fl),false);}
+  else if(t==='LWPOLYLINE'){
+    const vs=[];for(const [c,v] of cs){if(c===10)vs.push({p:[parseFloat(v),0],b:0});else if(c===20&&vs.length)vs[vs.length-1].p[1]=parseFloat(v);else if(c===42&&vs.length)vs[vs.length-1].b=parseFloat(v);}
+    vs.forEach(v=>v.p=fl(v.p));
+    const closed=(g(cs,70,0)&1)===1;push(polyPts(vs,closed),closed);}
+  else if(t==='POLYLINE'){
+    const fl70=g(cs,70,0);if(fl70&16||fl70&64)return;
+    const vs=(e.verts||[]).filter(v=>!(g(v.codes,70,0)&16)).map(v=>({p:fl([g(v.codes,10,0),g(v.codes,20,0)]),b:g(v.codes,42,0)}));
+    const closed=(fl70&1)===1;push(polyPts(vs,closed),closed);}
+  else if(t==='SPLINE'){const s=splinePts(cs);push(s.pts,s.closed);}
+  else if(t==='ELLIPSE'){
+    const cx=g(cs,10,0),cy=g(cs,20,0),mx=g(cs,11,0),my=g(cs,21,0),ra=g(cs,40,1);let a0=g(cs,41,0),a1=g(cs,42,2*Math.PI);
+    while(a1<=a0)a1+=2*Math.PI;const full=Math.abs((a1-a0)-2*Math.PI)<1e-6,n=Math.max(90,Math.ceil((a1-a0)/(Math.PI/180)*2));const pts=[];
+    for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n,c=Math.cos(a),s=Math.sin(a);pts.push([cx+c*mx-s*ra*my,cy+c*my+s*ra*mx]);}
+    if(full)pts.pop();push(pts,full);}
+  else if(t==='INSERT'){
+    if(depth>8)return;const b=blocks[gs(cs,2)];if(!b)return;
+    const sx=g(cs,41,1),sy=g(cs,42,1),rot=g(cs,50,0)*Math.PI/180,ix=g(cs,10,0),iy=g(cs,20,0),co=Math.cos(rot),si=Math.sin(rot);
+    const a=co*sx,bb=si*sx,c=-si*sy,d=co*sy,N=[a,bb,c,d,ix-(a*b.base[0]+c*b.base[1]),iy-(bb*b.base[0]+d*b.base[1])];
+    const cols=Math.max(1,g(cs,70,1)),rows=Math.max(1,g(cs,71,1)),dc=g(cs,44,0),dr=g(cs,45,0);
+    for(let r=0;r<rows;r++)for(let k=0;k<cols;k++){
+      const N2=N.slice();N2[4]+=k*dc*co-r*dr*si;N2[5]+=k*dc*si+r*dr*co;
+      const M2=compose(M,N2);for(const be of groupPoly(b.ents))entPaths(be,M2,ly,out,blocks,depth+1,skipped);}
+  } else if(!BENIGN.has(t)&&skipped)skipped[t]=(skipped[t]||0)+1;
+}
+function loadDXF(text){
+  const d=parseDXF(text),paths=[],skipped={};
+  for(const e of groupPoly(d.ents))entPaths(e,[1,0,0,1,0,0],null,paths,d.blocks,0,skipped);
+  if(!paths.length)throw new Error('В файле не нашлось контуров для резки.');
+  return {insunits:d.insunits,paths,skipped};
+}
+function analyze(paths,f,off){
+  const tol=0.05/f,use=paths.filter(p=>!off.has(p.layer));
+  const lens=use.map(p=>{let s=0;for(let i=1;i<p.pts.length;i++)s+=Math.hypot(p.pts[i][0]-p.pts[i-1][0],p.pts[i][1]-p.pts[i-1][1]);if(p.closed&&p.pts.length>2)s+=Math.hypot(p.pts[0][0]-p.pts[p.pts.length-1][0],p.pts[0][1]-p.pts[p.pts.length-1][1]);return s;});
+  const par=use.map((_,i)=>i),find=i=>{while(par[i]!==i){par[i]=par[par[i]];i=par[i];}return i;},uni=(a,b)=>{a=find(a);b=find(b);if(a!==b)par[a]=b;};
+  const cell=new Map(),key=(x,y)=>Math.round(x/tol)+','+Math.round(y/tol);
+  const ends=[];
+  use.forEach((p,i)=>{if(p.closed)return;ends.push([i,p.pts[0]],[i,p.pts[p.pts.length-1]]);});
+  for(const [i,q] of ends){const cx=Math.round(q[0]/tol),cy=Math.round(q[1]/tol);
+    for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){const a=cell.get((cx+dx)+','+(cy+dy));if(a)for(const [j,r] of a)if(Math.hypot(q[0]-r[0],q[1]-r[1])<=tol)uni(i,j);}
+    const k=key(q[0],q[1]);if(!cell.has(k))cell.set(k,[]);cell.get(k).push([i,q]);}
+  const gid=use.map((_,i)=>find(i)),roots=new Set(gid);
+  let length=0,minx=1e300,miny=1e300,maxx=-1e300,maxy=-1e300;const byLayer={};
+  paths.forEach(p=>{byLayer[p.layer]=byLayer[p.layer]||0;});
+  use.forEach((p,i)=>{length+=lens[i];byLayer[p.layer]+=lens[i]*f;for(const q of p.pts){if(q[0]<minx)minx=q[0];if(q[0]>maxx)maxx=q[0];if(q[1]<miny)miny=q[1];if(q[1]>maxy)maxy=q[1];}});
+  return {use,gid,length:length*f,pierces:roots.size,byLayer,minx,miny,maxx,maxy,w:(maxx-minx)*f,h:(maxy-miny)*f};
+}
+/*DXF-END*/
 
-  /* ==================== СТАРТ ==================== */
-  updateDensity();
-  applyLockState();
-  recalc();
+/* ---------- расчёт ---------- */
+const $=id=>document.getElementById(id);
+const N=v=>{const x=parseFloat(String(v).replace(',','.'));return isFinite(x)?x:0;};
+const fmt=(v,d=2)=>v.toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d});
+const rub=v=>fmt(v,2)+' ₽';
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dur=min=>{const s=Math.round(min*60),h=Math.floor(s/3600),m=Math.floor(s%3600/60),r=s%60;return (h?h+' ч ':'')+(m||h?m+' мин ':'')+r+' с';};
+let R=null;
+function calc(){
+  const price=N($('price').value),thk=N($('thk').value),dens=N($('dens').value),area=N($('area').value),qty=Math.max(1,Math.round(N($('qty').value))||1);
+  const len=N($('len').value),pierce=N($('pierce').value),speed=N($('speed').value),pt=N($('pt').value),setup=N($('setup').value);
+  const hour=N($('mh').value)+N($('gas').value)+N($('op').value),markup=N($('markup').value)/100,vat=N($('vat').value)/100;
+  const mass=area*thk/1000*dens, matU=mass*price;
+  const tU=(speed>0?len/speed:0)+pt*pierce/60;
+  const cutU=tU/60*hour, unit=matU+cutU, setupC=setup/60*hour;
+  const batch=unit*qty+setupC, net=batch*(1+markup), gross=net*(1+vat);
+  return {price,thk,dens,area,qty,len,pierce,speed,pt,setup,hour,markup,vat,mass,matU,tU,cutU,unit,setupC,batch,net,vatSum:gross-net,gross,per:gross/qty,machine:tU*qty+setup};
+}
+function render(){
+  const r=R=calc();
+  $('hourTotal').textContent=fmt(r.hour,0)+' ₽/час';
+  $('rTotal').textContent=rub(r.gross);
+  $('rPer').textContent='за 1 деталь '+rub(r.per)+(r.vat?' с НДС':'');
+  const row=(a,b,cls='')=>`<tr class="${cls}"><td>${a}</td><td>${b}</td></tr>`;
+  $('sum').innerHTML=
+    row('Масса детали',fmt(r.mass,3)+' кг')+
+    row('Материал на 1 деталь',rub(r.matU))+
+    row('Время резки 1 детали',dur(r.tU))+
+    row('Время станка на партию',dur(r.machine))+
+    row('Резка 1 детали',rub(r.cutU),'priv')+
+    row('Себестоимость 1 детали',rub(r.unit),'priv')+
+    row('Наладка на партию',rub(r.setupC),'priv')+
+    row('Себестоимость партии',rub(r.batch),'priv strong')+
+    row('Наценка',rub(r.net-r.batch),'priv')+
+    row('Партия без НДС',rub(r.net),'strong')+
+    row('НДС '+fmt(r.vat*100,0).replace(/\s/g,'')+'%',rub(r.vatSum),'sub')+
+    row('Партия с НДС',rub(r.gross),'strong');
+}
+
+/* ---------- пароль ---------- */
+const PW_HASH='9af15b336e6a9619928537df30b2e6a2376569fcf9d7e773eccede65606529a0';
+async function sha(s){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}catch(e){return null;}}
+function setUnlocked(on){
+  if(on)document.body.dataset.unlocked='1';else delete document.body.dataset.unlocked;
+  $('lockedView').hidden=on;$('openView').hidden=!on;$('pwForm').hidden=true;$('unlockBtn').hidden=false;$('pwErr').hidden=true;$('pw').value='';
+  render();
+}
+$('unlockBtn').onclick=()=>{$('pwForm').hidden=false;$('unlockBtn').hidden=true;$('pw').focus();};
+$('pwCancel').onclick=()=>{$('pwForm').hidden=true;$('unlockBtn').hidden=false;$('pwErr').hidden=true;$('pw').value='';};
+$('pwForm').onsubmit=async e=>{e.preventDefault();const v=$('pw').value;const h=await sha(v);
+  if(h===PW_HASH||(h===null&&v==='0000'))setUnlocked(true);else{$('pwErr').hidden=false;$('pw').select();}};
+$('relock').onclick=()=>setUnlocked(false);
+
+/* ---------- DXF в интерфейсе ---------- */
+let dxf=null,dxfName='',off=new Set(),lenAuto=false,pierceAuto=false;
+const AUTO_OFF=/^(defpoints|dim|text|размер|оси|ось|center|constr|hidden|view)/i;
+function unitFactor(){const s=$('units').value;return s==='auto'?(INS_MM[dxf.insunits]||1):N(s);}
+function setTag(id,on,manual){const t=$(id);t.hidden=!on;t.textContent=manual?'изменено вручную':'из DXF';t.className='tag'+(manual?' manual':'');}
+function dxfUpdate(applyFields){
+  if(!dxf)return;
+  const f=unitFactor(),a=analyze(dxf.paths,f,off),parts=Math.max(1,Math.round(N($('parts').value))||1);
+  dxf.a=a;dxf.f=f;
+  $('stLen').textContent=fmt(a.length,1)+' мм';
+  $('stPierce').textContent=a.pierces;
+  $('stBox').textContent=a.use.length?fmt(a.w,1)+' × '+fmt(a.h,1)+' мм':'—';
+  const un=$('units').value==='auto'?(dxf.insunits?'в файле заданы единицы, коэффициент '+f+' мм':'в файле единицы не заданы, принято мм'):'';
+  $('unitsNote').textContent=un;
+  const areaM2=a.w*a.h/1e6;
+  $('useArea').textContent='Подставить площадь габарита: '+fmt(areaM2,4)+' м²';
+  $('useArea').onclick=()=>{$('area').value=+areaM2.toFixed(5);render();};
+  const sk=Object.entries(dxf.skipped).map(([k,v])=>k+' ×'+v).join(', ');
+  $('dxInfo').textContent=sk?'Не учтены: '+sk:'';
+  const box=$('layers');box.innerHTML='';
+  Object.keys(dxf.layerNames).forEach(n=>{
+    const l=document.createElement('label');l.className='chip';
+    const c=document.createElement('input');c.type='checkbox';c.checked=!off.has(n);
+    c.onchange=()=>{c.checked?off.delete(n):off.add(n);dxfUpdate(true);};
+    const s=document.createElement('span');s.textContent=n;const em=document.createElement('em');em.textContent=fmt(dxf.layerNames[n]*f,0)+' мм';
+    l.append(c,s,em);box.appendChild(l);});
+  if(applyFields){
+    $('len').value=+(a.length/parts).toFixed(1);$('pierce').value=Math.round(a.pierces/parts);
+    lenAuto=pierceAuto=true;setTag('lenTag',true,false);setTag('pierceTag',true,false);
+  }
+  drawPreview();render();
+}
+function drawPreview(){
+  if(!dxf||!dxf.a)return;const a=dxf.a,cv=$('cv'),dpr=window.devicePixelRatio||1;
+  const W=cv.clientWidth,H=240;if(!W)return;cv.width=W*dpr;cv.height=H*dpr;
+  const x=cv.getContext('2d');x.scale(dpr,dpr);
+  const cs=getComputedStyle(document.documentElement),acc=cs.getPropertyValue('--accent').trim(),mut=cs.getPropertyValue('--muted').trim(),bad=cs.getPropertyValue('--bad').trim();
+  const all=dxf.paths;let minx=1e300,miny=1e300,maxx=-1e300,maxy=-1e300;
+  for(const p of all)for(const q of p.pts){minx=Math.min(minx,q[0]);maxx=Math.max(maxx,q[0]);miny=Math.min(miny,q[1]);maxy=Math.max(maxy,q[1]);}
+  const pad=14,w=maxx-minx||1,h=maxy-miny||1,s=Math.min((W-2*pad)/w,(H-2*pad)/h),ox=(W-w*s)/2,oy=(H-h*s)/2;
+  const T=q=>[ox+(q[0]-minx)*s,H-oy-(q[1]-miny)*s];
+  const draw=(p,col,lw)=>{x.beginPath();p.pts.forEach((q,i)=>{const t=T(q);i?x.lineTo(t[0],t[1]):x.moveTo(t[0],t[1]);});if(p.closed)x.closePath();x.strokeStyle=col;x.lineWidth=lw;x.stroke();};
+  x.globalAlpha=.35;for(const p of all)if(off.has(p.layer))draw(p,mut,1);x.globalAlpha=1;
+  for(const p of a.use)draw(p,acc,1.4);
+  const seen=new Set();x.fillStyle=bad;
+  a.use.forEach((p,i)=>{if(seen.has(a.gid[i]))return;seen.add(a.gid[i]);const t=T(p.pts[0]);x.beginPath();x.arc(t[0],t[1],2.6,0,7);x.fill();});
+}
+function onFile(file){
+  if(!file)return;const msg=$('dxMsg');msg.hidden=true;
+  if(!/\.dxf$/i.test(file.name)){msg.textContent='Нужен файл с расширением .dxf. DWG сначала сохраните как DXF.';msg.hidden=false;return;}
+  const fr=new FileReader();
+  fr.onload=()=>{
+    try{
+      const txt=new TextDecoder('utf-8').decode(fr.result);
+      const d=loadDXF(txt);dxf=d;dxfName=file.name;
+      dxf.layerNames={};d.paths.forEach(p=>{dxf.layerNames[p.layer]=0;});
+      d.paths.forEach(p=>{let s=0;for(let i=1;i<p.pts.length;i++)s+=Math.hypot(p.pts[i][0]-p.pts[i-1][0],p.pts[i][1]-p.pts[i-1][1]);if(p.closed)s+=Math.hypot(p.pts[0][0]-p.pts.at(-1)[0],p.pts[0][1]-p.pts.at(-1)[1]);dxf.layerNames[p.layer]+=s;});
+      off=new Set(Object.keys(dxf.layerNames).filter(n=>AUTO_OFF.test(n)));
+      if(off.size===Object.keys(dxf.layerNames).length)off=new Set();
+      $('dx').hidden=false;$('dxName').textContent=file.name;
+      if(!$('kPart').value)$('kPart').value=file.name.replace(/\.dxf$/i,'');
+      dxfUpdate(true);
+    }catch(err){msg.textContent=err.message||'Не удалось прочитать файл.';msg.hidden=false;}
+  };
+  fr.readAsArrayBuffer(file);
+}
+$('file').onchange=e=>{onFile(e.target.files[0]);e.target.value='';};
+const dz=$('drop');
+['dragenter','dragover'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.add('over');}));
+['dragleave','drop'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.remove('over');}));
+dz.addEventListener('drop',e=>onFile(e.dataTransfer.files[0]));
+$('units').onchange=()=>dxfUpdate(true);
+$('parts').oninput=()=>dxfUpdate(true);
+$('len').addEventListener('input',()=>{if(dxf&&lenAuto){lenAuto=false;setTag('lenTag',true,true);}});
+$('pierce').addEventListener('input',()=>{if(dxf&&pierceAuto){pierceAuto=false;setTag('pierceTag',true,true);}});
+$('preset').onchange=e=>{const v=e.target.value;if(!v)return;const [n,d]=v.split('|');$('mat').value=n;$('dens').value=d;e.target.value='';render();};
+window.addEventListener('resize',drawPreview);
+try{matchMedia('(prefers-color-scheme:dark)').addEventListener('change',drawPreview);}catch(e){}
+
+document.querySelectorAll('input:not(#file):not(#pw):not(#parts),textarea').forEach(el=>el.addEventListener('input',()=>{render();saveKp();}));
+
+/* ---------- КП ---------- */
+const KP_KEYS=['kCompany','kDetails','kLead','kNote'];
+function saveKp(){try{const o={};KP_KEYS.forEach(k=>o[k]=$(k).value);localStorage.setItem('laser-kp',JSON.stringify(o));}catch(e){}}
+(function(){
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  $('kDate').value=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  $('kNum').value='КП-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-1';
+  try{const o=JSON.parse(localStorage.getItem('laser-kp')||'null');if(o)KP_KEYS.forEach(k=>{if(o[k]!=null)$(k).value=o[k];});}catch(e){}
 })();
+const ruDate=iso=>{const [y,m,d]=iso.split('-');return d+'.'+m+'.'+y;};
+function buildKP(){
+  const r=calc(),date=$('kDate').value||new Date().toISOString().slice(0,10),valid=Math.max(1,Math.round(N($('kValid').value))||10);
+  const until=new Date(date);until.setDate(until.getDate()+valid);
+  const untilIso=isNaN(until)?date:until.toISOString().slice(0,10);
+  const part=$('kPart').value.trim(),mat=$('mat').value.trim();
+  const name='Лазерная резка'+(part?' · '+esc(part):'')+'<br><span style="color:#555;font-size:12px">'+esc(mat)+', толщина '+fmt(r.thk,r.thk%1?1:0)+' мм</span>';
+  const unitNet=r.net/r.qty;
+  const spec=[['Материал',esc(mat)+', '+fmt(r.thk,r.thk%1?1:0)+' мм'],['Длина реза на деталь',fmt(r.len,0)+' мм'],['Врезок на деталь',fmt(r.pierce,0)+' шт']];
+  if(dxf)spec.push(['Файл чертежа',esc(dxfName)]);
+  const co=$('kCompany').value.trim(),cl=$('kClient').value.trim(),det=$('kDetails').value.trim(),note=$('kNote').value.trim(),lead=$('kLead').value.trim();
+  return `
+  <div class="top">
+    <div><div class="co">${esc(co||'Название компании')}</div><div class="det">${esc(det)}</div></div>
+    <div class="meta"><b>Коммерческое предложение</b>№ ${esc($('kNum').value)}<br>от ${ruDate(date)}</div>
+  </div>
+  ${cl?`<div class="to">Для: <b>${esc(cl)}</b></div>`:'<div class="to"></div>'}
+  <div>Направляем расчёт стоимости изготовления деталей на станке лазерной резки.</div>
+  <table>
+    <tr><th style="width:30px">№</th><th>Наименование</th><th class="r">Кол-во, шт</th><th class="r">Цена за шт${r.vat?', без НДС':''}</th><th class="r">Сумма${r.vat?', без НДС':''}</th></tr>
+    <tr><td>1</td><td>${name}</td><td class="r">${fmt(r.qty,0)}</td><td class="r">${rub(unitNet)}</td><td class="r">${rub(r.net)}</td></tr>
+  </table>
+  <div class="tot">
+    <div><span>Итого${r.vat?' без НДС':''}</span><span>${rub(r.net)}</span></div>
+    <div><span>${r.vat?'НДС '+fmt(r.vat*100,0).replace(/\s/g,'')+'%':'НДС'}</span><span>${r.vat?rub(r.vatSum):'не облагается'}</span></div>
+    <div class="all"><span>Всего к оплате</span><span>${rub(r.gross)}</span></div>
+  </div>
+  <h3>Характеристики детали</h3>
+  <ul>${spec.map(s=>`<li>${s[0]}: ${s[1]}</li>`).join('')}</ul>
+  <h3>Условия</h3>
+  <ul>
+    ${lead?`<li>Срок изготовления: ${esc(lead)}</li>`:''}
+    <li>Предложение действительно до ${ruDate(untilIso)}</li>
+    ${note?`<li>${esc(note).replace(/\n/g,'<br>')}</li>`:''}
+  </ul>
+  <div class="sign"><span>Исполнитель: ______________________</span><span>${esc(co)}</span></div>`;
+}
+$('kpBtn').onclick=async()=>{
+  const st=$('status'),btn=$('kpBtn');st.textContent='';btn.disabled=true;
+  try{
+    if(typeof html2pdf==='undefined')throw new Error('Библиотека PDF не загрузилась. Проверьте соединение и обновите страницу.');
+    const dl={save:async({filename,data})=>{const u=URL.createObjectURL(data),a=document.createElement('a');a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);}};
+    st.textContent='Готовлю PDF…';
+    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+    const el=$('kpDoc');el.innerHTML=buildKP();
+    const blob=await html2pdf().set({margin:0,image:{type:'jpeg',quality:.98},html2canvas:{scale:2,backgroundColor:'#ffffff',scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(el).outputPdf('blob');
+    const nm=($('kNum').value||'KP').replace(/[^\wА-Яа-я.-]+/g,'_');
+    await dl.save({filename:nm+'.pdf',data:blob});
+    st.textContent='КП сохранено.';
+  }catch(e){
+    st.textContent=e&&e.code==='declined'?'Сохранение отменено.':(e&&e.message)||'Не удалось создать PDF.';
+  }finally{btn.disabled=false;}
+};
+
+render();
 </script>
+
 </body>
 </html>
